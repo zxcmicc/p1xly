@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>p1xly // developer</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background-color: #0b0e14; color: #e6edf3; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+        .container { background: #11151c; border: 1px solid #1f242d; border-radius: 16px; padding: 32px; max-width: 480px; width: 100%; box-shadow: 0 15px 35px rgba(0,0,0,0.6); text-align: center; }
+        .avatar { width: 96px; height: 96px; border-radius: 50%; border: 2px solid #3b82f6; margin-bottom: 16px; }
+        h1 { color: #ffffff; font-size: 26px; font-weight: 700; margin-bottom: 4px; }
+        .tag { color: #3b82f6; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
+        .bio { font-size: 15px; line-height: 1.6; color: #9ca3af; margin-bottom: 28px; }
+        .section-title { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: #6b7280; text-align: left; margin: 20px 0 10px 0; font-weight: 600; }
+        .link-card { display: flex; align-items: center; justify-content: space-between; background: #161b22; border: 1px solid #21262d; padding: 14px 18px; border-radius: 12px; color: #e6edf3; text-decoration: none; margin-bottom: 10px; transition: all 0.2s ease; }
+        .link-card:hover { border-color: #3b82f6; background: #1c212a; transform: translateY(-2px); }
+        .link-card span:last-child { color: #3b82f6; font-weight: bold; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <img src="https://github.com/identicons/p1xly.png" class="avatar">
+    <h1>p1xly</h1>
+    <div class="tag">Coder / Developer</div>
+    <div class="bio" id="bio">Загрузка...</div>
+    <div id="links-container"></div>
+</div>
+
+<script>
+    fetch('/api/data')
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('bio').innerText = data.bio;
+            const container = document.getElementById('links-container');
+            const categories = { bots: '🤖 Боты', channels: '📢 Каналы', contacts: '🔗 Связь' };
+
+            Object.keys(categories).forEach(cat => {
+                const catLinks = data.links.filter(l => l.category === cat);
+                if (catLinks.length > 0) {
+                    container.innerHTML += `<div class="section-title">${categories[cat]}</div>`;
+                    catLinks.forEach(l => {
+                        container.innerHTML += `
+                            <a href="${l.url}" target="_blank" class="link-card">
+                                <span>${l.title}</span>
+                                <span>→</span>
+                            </a>`;
+                    });
+                }
+            });
+        });
+</script>
+</body>
+</html>
