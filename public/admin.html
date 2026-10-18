@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>p1xly // admin</title>
+    <style>
+        body { background: #0b0e14; color: #fff; font-family: sans-serif; display: flex; justify-content: center; padding: 40px; }
+        .box { background: #11151c; border: 1px solid #1f242d; padding: 25px; border-radius: 12px; width: 100%; max-width: 500px; }
+        input, select, button { width: 100%; padding: 10px; margin-top: 8px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #333; background: #161b22; color: #fff; }
+        button { background: #3b82f6; border: none; cursor: pointer; font-weight: bold; }
+        .link-item { display: flex; justify-content: space-between; align-items: center; background: #161b22; padding: 10px; margin-bottom: 8px; border-radius: 6px; }
+        .del-btn { background: #ef4444; width: auto; padding: 5px 10px; margin: 0; }
+    </style>
+</head>
+<body>
+<div class="box">
+    <h2>Админка p1xly</h2>
+    <div id="login-form">
+        <input type="password" id="password" placeholder="Введи пароль">
+        <button onclick="login()">Войти</button>
+    </div>
+
+    <div id="admin-panel" style="display:none;">
+        <h3>Редактировать Био</h3>
+        <input type="text" id="bio-input">
+        <button onclick="saveBio()">Сохранить Био</button>
+
+        <h3>Добавить ссылку</h3>
+        <select id="cat-input">
+            <option value="bots">🤖 Бот</option>
+            <option value="channels">📢 Канал</option>
+            <option value="contacts">🔗 Связь</option>
+        </select>
+        <input type="text" id="title-input" placeholder="Название (например, My Bot)">
+        <input type="text" id="url-input" placeholder="Ссылка (https://t.me/...)">
+        <button onclick="addLink()">Добавить</button>
+
+        <h3>Текущие ссылки</h3>
+        <div id="admin-links"></div>
+    </div>
+</div>
+
+<script>
+    function login() {
+        fetch('/api/login', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ password: document.getElementById('password').value })
+        }).then(res => res.json()).then(data => {
+            if(data.success) {
+                document.getElementById('login-form').style.display = 'none';
+                document.getElementById('admin-panel').style.display = 'block';
+                loadAdminData();
+            } else alert('Неверный пароль');
+        });
+    }
+
+    function loadAdminData() {
+        fetch('/api/data').then(res => res.json()).then(data => {
+            document.getElementById('bio-input').value = data.bio;
+            const container = document.getElementById('admin-links');
+            container.innerHTML = '';
+            data.links.forEach(l => {
+                container.innerHTML += `
+                    <div class="link-item">
+                        <span>[${l.category}] ${l.title}</span>
+                        <button class="del-btn" onclick="deleteLink(${l.id})">X</button>
+                    </div>`;
+            });
+        });
+    }
+
+    function saveBio() {
+        fetch('/api/admin/bio', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ bio: document.getElementById('bio-input').value })
+        }).then(() => alert('Био обновлено!'));
+    }
+
+    function addLink() {
+        fetch('/api/admin/links', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                category: document.getElementById('cat-input').value,
+                title: document.getElementById('title-input').value,
+                url: document.getElementById('url-input').value
+            })
+        }).then(() => loadAdminData());
+    }
+
+    function deleteLink(id) {
+        fetch('/api/admin/links/' + id, { method: 'DELETE' }).then(() => loadAdminData());
+    }
+</script>
+</body>
+</html>
