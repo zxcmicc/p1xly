@@ -1,129 +1,164 @@
-const express = require('express');
-const session = require('express-session');
-const sqlite3 = require('sqlite3').verbose();
-const bcrypt = require('bcryptjs');
-const path = require('path');
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>p1xly // developer</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background-color: #0b0e14; color: #e6edf3; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+        
+        .nav { position: absolute; top: 20px; display: flex; gap: 8px; }
+        .nav button { background: #161b22; color: #9ca3af; border: 1px solid #21262d; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: 0.2s; }
+        .nav button.active { background: #1f242d; color: #fff; border-color: #3b82f6; }
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+        .container { background: #11151c; border: 1px solid #1f242d; border-radius: 16px; padding: 32px; max-width: 480px; width: 100%; box-shadow: 0 15px 35px rgba(0,0,0,0.6); text-align: center; }
+        .avatar { width: 96px; height: 96px; border-radius: 50%; border: 2px solid #3b82f6; margin-bottom: 16px; }
+        h1 { color: #ffffff; font-size: 26px; font-weight: 700; margin-bottom: 4px; }
+        .tag { color: #3b82f6; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
+        .bio { font-size: 15px; line-height: 1.6; color: #9ca3af; margin-bottom: 28px; }
+        .section-title { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: #6b7280; text-align: left; margin: 20px 0 10px 0; font-weight: 600; }
+        .link-card { display: flex; align-items: center; justify-content: space-between; background: #161b22; border: 1px solid #21262d; padding: 14px 18px; border-radius: 12px; color: #e6edf3; text-decoration: none; margin-bottom: 10px; transition: all 0.2s ease; }
+        .link-card:hover { border-color: #3b82f6; background: #1c212a; transform: translateY(-2px); }
+        .link-card span:last-child { color: #3b82f6; font-weight: bold; }
+        
+        input { width: 100%; padding: 12px; background: #161b22; border: 1px solid #21262d; color: #fff; border-radius: 8px; margin-bottom: 10px; outline: none; }
+        input:focus { border-color: #3b82f6; }
+        .action-btn { width: 100%; padding: 12px; background: #3b82f6; color: #fff; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .action-btn:hover { background: #2563eb; }
+    </style>
+</head>
+<body>
 
-// Пароль от админки
-const ADMIN_PASSWORD = "gagajka3300"; 
-const ADMIN_HASH = bcrypt.hashSync(ADMIN_PASSWORD, 10);
+    <div class="nav">
+        <button onclick="switchTab('home')" id="btn-home" class="active">Главная</button>
+        <button onclick="switchTab('bot')" id="btn-bot">Бот</button>
+    </div>
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(session({
-    secret: 'p1xly_super_secret_key',
-    resave: false,
-    saveUninitialized: false
-}));
+    <!-- ГЛАВНАЯ ВКЛАДКА -->
+    <div id="tab-home" class="tab-pane" style="width: 100%; display: flex; justify-content: center;">
+        <div class="container">
+            <img src="/photo_2026-08-23_19-38-06.jpg" class="avatar">
+            <h1>p1xly</h1>
+            <div class="tag">Coder / Developer</div>
+            <div class="bio" id="bio">Загрузка...</div>
+            <div id="links-container"></div>
+        </div>
+    </div>
 
-const db = new sqlite3.Database('./database.sqlite');
+    <!-- ВКЛАДКА БОТА -->
+    <div id="tab-bot" class="tab-pane" style="width: 100%; display: none; justify-content: center;">
+        <div class="container">
+            <div id="paywall-section">
+                <h2 style="color: #fff; margin-bottom: 10px;">🔒 Доступ закрыт</h2>
+                <p class="bio">Введи промокод, чтобы разблокировать вкладку с ботом:</p>
+                <input type="text" id="promo-input" placeholder="Промокод (напр. BRO2026)">
+                <button class="action-btn" onclick="activatePromo()">Активировать</button>
+                <p id="error-msg" style="color: #ef4444; font-size: 13px; margin-top: 10px;"></p>
+            </div>
 
-db.serialize(() => {
-    db.run(`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)`);
-    db.run(`CREATE TABLE IF NOT EXISTS links (id INTEGER PRIMARY KEY AUTOINCREMENT, category TEXT, title TEXT, url TEXT)`);
-    db.run(`CREATE TABLE IF NOT EXISTS promocodes (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT, days INTEGER, uses_left INTEGER)`);
-    db.run(`CREATE TABLE IF NOT EXISTS subscriptions (user_id TEXT PRIMARY KEY, expires_at TEXT)`);
+            <div id="bot-section" style="display: none; text-align: left;">
+                <h2 style="color: #fff; margin-bottom: 15px; text-align: center;">🤖 Бот-панель</h2>
+                <div id="chat-messages" style="background: #161b22; border: 1px solid #21262d; height: 250px; border-radius: 8px; padding: 10px; overflow-y: auto; margin-bottom: 10px; font-size: 14px;">
+                    <div style="color: #9ca3af;">Бот: Здарова! Я на связи. Чё замутим?</div>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="chat-input" placeholder="Написать боту..." style="margin-bottom: 0;">
+                    <button class="action-btn" style="width: auto; padding: 0 16px;" onclick="sendMessage()">➜</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('bio', 'Кодер. Пишу ботов, софт и скрипты.')`);
-    db.run(`INSERT OR IGNORE INTO promocodes (code, days, uses_left) VALUES ('BRO2026', 7, 5)`);
-    
-    db.get(`SELECT COUNT(*) as count FROM links`, (err, row) => {
-        if (row.count === 0) {
-            db.run(`INSERT INTO links (category, title, url) VALUES ('bots', '@p1xly_dev_bot', 'https://t.me/p1xly_dev_bot')`);
-            db.run(`INSERT INTO links (category, title, url) VALUES ('channels', 'p1xly_dev', 'https://t.me/p1xly_dev')`);
-            db.run(`INSERT INTO links (category, title, url) VALUES ('contacts', 'Telegram (Личка)', 'https://t.me/zxc_micc')`);
-        }
-    });
-});
+<script>
+    let userId = localStorage.getItem('p1xly_user_id');
+    if (!userId) {
+        userId = 'user_' + Math.random().toString(36).substring(2, 9);
+        localStorage.setItem('p1xly_user_id', userId);
+    }
 
-const isAuth = (req, res, next) => {
-    if (req.session.isAdmin) return next();
-    res.status(401).json({ error: 'Необходима авторизация' });
-};
+    function switchTab(tab) {
+        document.getElementById('tab-home').style.display = tab === 'home' ? 'flex' : 'none';
+        document.getElementById('tab-bot').style.display = tab === 'bot' ? 'flex' : 'none';
+        
+        document.getElementById('btn-home').className = tab === 'home' ? 'active' : '';
+        document.getElementById('btn-bot').className = tab === 'bot' ? 'active' : '';
 
-// Пинг-эндпоинт для защиты от засыпания на Render
-app.get('/ping', (req, res) => {
-    res.status(200).send('Alive');
-});
+        if (tab === 'bot') checkSubscription();
+    }
 
-app.get('/api/data', (req, res) => {
-    db.get(`SELECT value FROM settings WHERE key = 'bio'`, (err, bioRow) => {
-        db.all(`SELECT * FROM links`, (err, links) => {
-            res.json({ bio: bioRow ? bioRow.value : '', links: links || [] });
-        });
-    });
-});
+    // Загрузка данных главной страницы
+    fetch('/api/data')
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('bio').innerText = data.bio;
+            const container = document.getElementById('links-container');
+            const categories = { bots: '🤖 Боты', channels: '📢 Каналы', contacts: '🔗 Связь' };
 
-// Проверка подписки/промокода
-app.post('/api/check-sub', (req, res) => {
-    const { userId } = req.body;
-    db.get(`SELECT expires_at FROM subscriptions WHERE user_id = ?`, [userId], (err, row) => {
-        if (row && new Date(row.expires_at) > new Date()) {
-            res.json({ active: true, expiresAt: row.expires_at });
-        } else {
-            res.json({ active: false });
-        }
-    });
-});
-
-// Активация промокода
-app.post('/api/activate-promo', (req, res) => {
-    const { userId, code } = req.body;
-    db.get(`SELECT * FROM promocodes WHERE code = ?`, [code], (err, promo) => {
-        if (!promo) return res.status(400).json({ success: false, message: 'Такого промокода нет, братуха.' });
-        if (promo.uses_left <= 0) return res.status(400).json({ success: false, message: 'Промокод уже исчерпал лимиты.' });
-
-        db.get(`SELECT expires_at FROM subscriptions WHERE user_id = ?`, [userId], (err, sub) => {
-            let now = new Date();
-            let currentExpiry = sub && new Date(sub.expires_at) > now ? new Date(sub.expires_at) : now;
-            currentExpiry.setDate(currentExpiry.getDate() + promo.days);
-
-            db.run(`INSERT OR REPLACE INTO subscriptions (user_id, expires_at) VALUES (?, ?)`, [userId, currentExpiry.toISOString()], () => {
-                db.run(`UPDATE promocodes SET uses_left = uses_left - 1 WHERE id = ?`, [promo.id], () => {
-                    res.json({ success: true, message: `Успешно! Подписка активна до ${currentExpiry.toLocaleDateString()}` });
-                });
+            Object.keys(categories).forEach(cat => {
+                const catLinks = data.links.filter(l => l.category === cat);
+                if (catLinks.length > 0) {
+                    container.innerHTML += `<div class="section-title">${categories[cat]}</div>`;
+                    catLinks.forEach(l => {
+                        container.innerHTML += `
+                            <a href="${l.url}" target="_blank" class="link-card">
+                                <span>${l.title}</span>
+                                <span>→</span>
+                            </a>`;
+                    });
+                }
             });
         });
-    });
-});
 
-app.post('/api/login', (req, res) => {
-    const { password } = req.body;
-    if (bcrypt.compareSync(password, ADMIN_HASH)) {
-        req.session.isAdmin = true;
-        res.json({ success: true });
-    } else {
-        res.status(400).json({ error: 'Неверный пароль' });
+    async function checkSubscription() {
+        let res = await fetch('/api/check-sub', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId })
+        });
+        let data = await res.json();
+        if (data.active) {
+            document.getElementById('paywall-section').style.display = 'none';
+            document.getElementById('bot-section').style.display = 'block';
+        } else {
+            document.getElementById('paywall-section').style.display = 'block';
+            document.getElementById('bot-section').style.display = 'none';
+        }
     }
-});
 
-app.post('/api/admin/bio', isAuth, (req, res) => {
-    const { bio } = req.body;
-    db.run(`UPDATE settings SET value = ? WHERE key = 'bio'`, [bio], () => {
-        res.json({ success: true });
-    });
-});
+    async function activatePromo() {
+        let code = document.getElementById('promo-input').value.trim();
+        let err = document.getElementById('error-msg');
+        err.innerText = '';
+        
+        let res = await fetch('/api/activate-promo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, code })
+        });
+        let data = await res.json();
+        if (data.success) {
+            alert(data.message);
+            checkSubscription();
+        } else {
+            err.innerText = data.message;
+        }
+    }
 
-app.post('/api/admin/links', isAuth, (req, res) => {
-    const { category, title, url } = req.body;
-    db.run(`INSERT INTO links (category, title, url) VALUES (?, ?, ?)`, [category, title, url], function() {
-        res.json({ id: this.lastID });
-    });
-});
+    function sendMessage() {
+        let input = document.getElementById('chat-input');
+        let box = document.getElementById('chat-messages');
+        if (!input.value.trim()) return;
 
-app.delete('/api/admin/links/:id', isAuth, (req, res) => {
-    db.run(`DELETE FROM links WHERE id = ?`, [req.params.id], () => {
-        res.json({ success: true });
-    });
-});
+        box.innerHTML += `<div style="margin-bottom: 6px;">Ты: ${input.value}</div>`;
+        let text = input.value;
+        input.value = '';
 
-app.use(express.static(path.join(__dirname, 'public')));
-
-app.get('/admin', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'admin.html'));
-});
-
-app.listen(PORT, () => console.log(`Server started on http://localhost:${PORT}`));
+        setTimeout(() => {
+            box.innerHTML += `<div style="margin-bottom: 6px; color: #3b82f6;">Бот: Получено -> ${text}</div>`;
+            box.scrollTop = box.scrollHeight;
+        }, 400);
+    }
+</script>
+</body>
+</html>
