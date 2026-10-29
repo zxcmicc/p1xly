@@ -1,54 +1,129 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>p1xly // developer</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
-        body { background-color: #0b0e14; color: #e6edf3; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
-        .container { background: #11151c; border: 1px solid #1f242d; border-radius: 16px; padding: 32px; max-width: 480px; width: 100%; box-shadow: 0 15px 35px rgba(0,0,0,0.6); text-align: center; }
-        .avatar { width: 96px; height: 96px; border-radius: 50%; border: 2px solid #3b82f6; margin-bottom: 16px; }
-        h1 { color: #ffffff; font-size: 26px; font-weight: 700; margin-bottom: 4px; }
-        .tag { color: #3b82f6; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
-        .bio { font-size: 15px; line-height: 1.6; color: #9ca3af; margin-bottom: 28px; }
-        .section-title { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: #6b7280; text-align: left; margin: 20px 0 10px 0; font-weight: 600; }
-        .link-card { display: flex; align-items: center; justify-content: space-between; background: #161b22; border: 1px solid #21262d; padding: 14px 18px; border-radius: 12px; color: #e6edf3; text-decoration: none; margin-bottom: 10px; transition: all 0.2s ease; }
-        .link-card:hover { border-color: #3b82f6; background: #1c212a; transform: translateY(-2px); }
-        .link-card span:last-child { color: #3b82f6; font-weight: bold; }
-    </style>
-</head>
-<body>
-<div class="container">
-    <img src="/photo_2026-08-23_19-38-06.jpg" class="avatar">
-    <h1>p1xly</h1>
-    <div class="tag">Coder / Developer</div>
-    <div class="bio" id="bio">Загрузка...</div>
-    <div id="links-container"></div>
-</div>
+const express = require('express');
+const session = require('express-session');
+const sqlite3 = require('sqlite3').verbose();
+const bcrypt = require('bcryptjs');
+const path = require('path');
 
-<script>
-    fetch('/api/data')
-        .then(res => res.json())
-        .then(data => {
-            document.getElementById('bio').innerText = data.bio;
-            const container = document.getElementById('links-container');
-            const categories = { bots: '🤖 Боты', channels: '📢 Каналы', contacts: '🔗 Связь' };
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-            Object.keys(categories).forEach(cat => {
-                const catLinks = data.links.filter(l => l.category === cat);
-                if (catLinks.length > 0) {
-                    container.innerHTML += `<div class="section-title">${categories[cat]}</div>`;
-                    catLinks.forEach(l => {
-                        container.innerHTML += `
-                            <a href="${l.url}" target="_blank" class="link-card">
-                                <span>${l.title}</span>
-                                <span>→</span>
-                            </a>`;
-                    });
-                }
+// Пароль от админки
+const ADMIN_PASSWORD = "gagajka3300"; 
+const ADMIN_HASH = bcrypt.hashSync(ADMIN_PASSWORD, 10);
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(session({
+    secret: 'p1xly_super_secret_key',
+    resave: false,
+    saveUninitialized: false
+}));
+
+const db = new sqlite3.Database('./database.sqlite');
+
+db.serialize(() => {
+    db.run(`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)`);
+    db.run(`CREATE TABLE IF NOT EXISTS links (id INTEGER PRIMARY KEY AUTOINCREMENT, category TEXT, title TEXT, url TEXT)`);
+    db.run(`CREATE TABLE IF NOT EXISTS promocodes (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT, days INTEGER, uses_left INTEGER)`);
+    db.run(`CREATE TABLE IF NOT EXISTS subscriptions (user_id TEXT PRIMARY KEY, expires_at TEXT)`);
+
+    db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('bio', 'Кодер. Пишу ботов, софт и скрипты.')`);
+    db.run(`INSERT OR IGNORE INTO promocodes (code, days, uses_left) VALUES ('BRO2026', 7, 5)`);
+    
+    db.get(`SELECT COUNT(*) as count FROM links`, (err, row) => {
+        if (row.count === 0) {
+            db.run(`INSERT INTO links (category, title, url) VALUES ('bots', '@p1xly_dev_bot', 'https://t.me/p1xly_dev_bot')`);
+            db.run(`INSERT INTO links (category, title, url) VALUES ('channels', 'p1xly_dev', 'https://t.me/p1xly_dev')`);
+            db.run(`INSERT INTO links (category, title, url) VALUES ('contacts', 'Telegram (Личка)', 'https://t.me/zxc_micc')`);
+        }
+    });
+});
+
+const isAuth = (req, res, next) => {
+    if (req.session.isAdmin) return next();
+    res.status(401).json({ error: 'Необходима авторизация' });
+};
+
+// Пинг-эндпоинт для защиты от засыпания на Render
+app.get('/ping', (req, res) => {
+    res.status(200).send('Alive');
+});
+
+app.get('/api/data', (req, res) => {
+    db.get(`SELECT value FROM settings WHERE key = 'bio'`, (err, bioRow) => {
+        db.all(`SELECT * FROM links`, (err, links) => {
+            res.json({ bio: bioRow ? bioRow.value : '', links: links || [] });
+        });
+    });
+});
+
+// Проверка подписки/промокода
+app.post('/api/check-sub', (req, res) => {
+    const { userId } = req.body;
+    db.get(`SELECT expires_at FROM subscriptions WHERE user_id = ?`, [userId], (err, row) => {
+        if (row && new Date(row.expires_at) > new Date()) {
+            res.json({ active: true, expiresAt: row.expires_at });
+        } else {
+            res.json({ active: false });
+        }
+    });
+});
+
+// Активация промокода
+app.post('/api/activate-promo', (req, res) => {
+    const { userId, code } = req.body;
+    db.get(`SELECT * FROM promocodes WHERE code = ?`, [code], (err, promo) => {
+        if (!promo) return res.status(400).json({ success: false, message: 'Такого промокода нет, братуха.' });
+        if (promo.uses_left <= 0) return res.status(400).json({ success: false, message: 'Промокод уже исчерпал лимиты.' });
+
+        db.get(`SELECT expires_at FROM subscriptions WHERE user_id = ?`, [userId], (err, sub) => {
+            let now = new Date();
+            let currentExpiry = sub && new Date(sub.expires_at) > now ? new Date(sub.expires_at) : now;
+            currentExpiry.setDate(currentExpiry.getDate() + promo.days);
+
+            db.run(`INSERT OR REPLACE INTO subscriptions (user_id, expires_at) VALUES (?, ?)`, [userId, currentExpiry.toISOString()], () => {
+                db.run(`UPDATE promocodes SET uses_left = uses_left - 1 WHERE id = ?`, [promo.id], () => {
+                    res.json({ success: true, message: `Успешно! Подписка активна до ${currentExpiry.toLocaleDateString()}` });
+                });
             });
         });
-</script>
-</body>
-</html>
+    });
+});
+
+app.post('/api/login', (req, res) => {
+    const { password } = req.body;
+    if (bcrypt.compareSync(password, ADMIN_HASH)) {
+        req.session.isAdmin = true;
+        res.json({ success: true });
+    } else {
+        res.status(400).json({ error: 'Неверный пароль' });
+    }
+});
+
+app.post('/api/admin/bio', isAuth, (req, res) => {
+    const { bio } = req.body;
+    db.run(`UPDATE settings SET value = ? WHERE key = 'bio'`, [bio], () => {
+        res.json({ success: true });
+    });
+});
+
+app.post('/api/admin/links', isAuth, (req, res) => {
+    const { category, title, url } = req.body;
+    db.run(`INSERT INTO links (category, title, url) VALUES (?, ?, ?)`, [category, title, url], function() {
+        res.json({ id: this.lastID });
+    });
+});
+
+app.delete('/api/admin/links/:id', isAuth, (req, res) => {
+    db.run(`DELETE FROM links WHERE id = ?`, [req.params.id], () => {
+        res.json({ success: true });
+    });
+});
+
+app.use(express.static(path.join(__dirname, 'public')));
+
+app.get('/admin', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+app.listen(PORT, () => console.log(`Server started on http://localhost:${PORT}`));
