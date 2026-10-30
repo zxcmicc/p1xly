@@ -3,112 +3,136 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>p1xly // developer</title>
+    <title>P1xly SaaS Panel</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
-        body { background-color: #0b0e14; color: #e6edf3; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
-        
-        .nav { position: absolute; top: 20px; display: flex; gap: 8px; }
-        .nav button { background: #161b22; color: #9ca3af; border: 1px solid #21262d; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: 0.2s; }
-        .nav button.active { background: #1f242d; color: #fff; border-color: #3b82f6; }
-
-        .container { background: #11151c; border: 1px solid #1f242d; border-radius: 16px; padding: 32px; max-width: 480px; width: 100%; box-shadow: 0 15px 35px rgba(0,0,0,0.6); text-align: center; }
-        .avatar { width: 96px; height: 96px; border-radius: 50%; border: 2px solid #3b82f6; margin-bottom: 16px; }
-        h1 { color: #ffffff; font-size: 26px; font-weight: 700; margin-bottom: 4px; }
-        .tag { color: #3b82f6; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
-        .bio { font-size: 15px; line-height: 1.6; color: #9ca3af; margin-bottom: 28px; }
-        .section-title { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: #6b7280; text-align: left; margin: 20px 0 10px 0; font-weight: 600; }
-        .link-card { display: flex; align-items: center; justify-content: space-between; background: #161b22; border: 1px solid #21262d; padding: 14px 18px; border-radius: 12px; color: #e6edf3; text-decoration: none; margin-bottom: 10px; transition: all 0.2s ease; }
-        .link-card:hover { border-color: #3b82f6; background: #1c212a; transform: translateY(-2px); }
-        .link-card span:last-child { color: #3b82f6; font-weight: bold; }
-        
-        input { width: 100%; padding: 12px; background: #161b22; border: 1px solid #21262d; color: #fff; border-radius: 8px; margin-bottom: 10px; outline: none; }
-        input:focus { border-color: #3b82f6; }
-        .action-btn { width: 100%; padding: 12px; background: #3b82f6; color: #fff; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .action-btn:hover { background: #2563eb; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background: #0d1117; color: #c9d1d9; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+        .container { width: 100%; max-width: 450px; background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 25px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+        .tabs { display: flex; margin-bottom: 20px; border-bottom: 1px solid #30363d; }
+        .tab { flex: 1; text-align: center; padding: 10px; cursor: pointer; color: #8b949e; font-weight: 600; border-bottom: 2px solid transparent; }
+        .tab.active { color: #58a6ff; border-bottom-color: #58a6ff; }
+        .section { display: none; }
+        .section.active { display: block; }
+        input, select { width: 100%; padding: 12px; background: #0d1117; border: 1px solid #30363d; color: #fff; border-radius: 8px; margin-bottom: 12px; outline: none; }
+        input:focus, select:focus { border-color: #58a6ff; }
+        .action-btn { width: 100%; padding: 12px; background: #238636; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+        .action-btn:hover { background: #2ea043; }
+        .link-item { display: block; padding: 10px; background: #21262d; border-radius: 6px; margin-bottom: 8px; color: #58a6ff; text-decoration: none; text-align: center; }
+        .link-item:hover { background: #30363d; }
+        .log-box { max-height: 150px; overflow-y: auto; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 8px; font-size: 11px; color: #8b949e; margin-top: 10px; text-align: left; }
     </style>
 </head>
 <body>
 
-    <div class="nav">
-        <button onclick="switchTab('home')" id="btn-home" class="active">Главная</button>
-        <button onclick="switchTab('bot')" id="btn-bot">Бот</button>
+<div class="container">
+    <!-- Навигация по вкладкам -->
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab('home')">Главная</div>
+        <div class="tab" onclick="switchTab('bot')">Панель бота</div>
+        <div class="tab" onclick="switchTab('admin')">Админка</div>
     </div>
 
-    <!-- ГЛАВНАЯ ВКЛАДКА -->
-    <div id="tab-home" class="tab-pane" style="width: 100%; display: flex; justify-content: center;">
-        <div class="container">
-            <img src="/photo_2026-08-23_19-38-06.jpg" class="avatar">
-            <h1>p1xly</h1>
-            <div class="tag">Coder / Developer</div>
-            <div class="bio" id="bio">Загрузка...</div>
-            <div id="links-container"></div>
+    <!-- Вкладка: Главная -->
+    <div id="home-section" class="section active">
+        <h2 style="color: #fff; margin-bottom: 10px; text-align: center;">👋 Привет, бро</h2>
+        <p id="bio-text" style="text-align: center; color: #8b949e; margin-bottom: 20px; font-size: 14px;"></p>
+        <div id="links-container"></div>
+    </div>
+
+    <!-- Вкладка: Панель бота (Саб / Промокод) -->
+    <div id="bot-section" class="section">
+        <!-- Блок ввода промокода (если подписки нет) -->
+        <div id="paywall-section" style="text-align: center;">
+            <h2 style="color: #fff; margin-bottom: 10px;">🔒 Доступ ограничен</h2>
+            <p style="color: #8b949e; font-size: 13px; margin-bottom: 15px;">Введите промокод для активации доступа:</p>
+            
+            <!-- Поле чистое, без подсказок внутри -->
+            <input type="text" id="promo-input" placeholder="Введите промокод" style="text-align: center;">
+            
+            <button class="action-btn" onclick="activatePromo()">Активировать</button>
+            <p id="promo-status" style="font-size: 13px; margin-top: 10px;"></p>
+        </div>
+
+        <!-- Сама панель отправки (появится после активации подписки) -->
+        <div id="control-panel" style="display: none; text-align: left;">
+            <h2 style="color: #fff; margin-bottom: 15px; text-align: center;">🤖 Мульти-аккаунт Панель</h2>
+            
+            <p style="font-size: 12px; color: #8b949e; margin-bottom: 5px;">Выбери аккаунт для отправки:</p>
+            <select id="account-select"></select>
+
+            <p style="font-size: 12px; color: #8b949e; margin-bottom: 5px;">Кому отправить (@username или ID):</p>
+            <input type="text" id="recipient-input" placeholder="@username">
+
+            <p style="font-size: 12px; color: #8b949e; margin-bottom: 5px;">Текст сообщения:</p>
+            <input type="text" id="chat-input" placeholder="Здарова, бро!">
+            
+            <button class="action-btn" onclick="sendTgMessage()">Отправить сообщение</button>
+            <p id="send-status" style="font-size: 13px; margin-top: 10px; text-align: center;"></p>
         </div>
     </div>
 
-    <!-- ВКЛАДКА БОТА -->
-    <div id="tab-bot" class="tab-pane" style="width: 100%; display: none; justify-content: center;">
-        <div class="container">
-            <div id="paywall-section">
-                <h2 style="color: #fff; margin-bottom: 10px;">🔒 Доступ закрыт</h2>
-                <p class="bio">Введи промокод, чтобы разблокировать вкладку с ботом:</p>
-                <input type="text" id="promo-input" placeholder="Промокод (напр. BRO2026)">
-                <button class="action-btn" onclick="activatePromo()">Активировать</button>
-                <p id="error-msg" style="color: #ef4444; font-size: 13px; margin-top: 10px;"></p>
-            </div>
+    <!-- Вкладка: Админка -->
+    <div id="admin-section" class="section">
+        <div id="admin-login-box">
+            <h2 style="color: #fff; margin-bottom: 15px; text-align: center;">🔐 Вход в админку</h2>
+            <input type="password" id="admin-pass" placeholder="Пароль администратора">
+            <button class="action-btn" onclick="adminLogin()">Войти</button>
+            <p id="login-status" style="font-size: 13px; margin-top: 10px; text-align: center;"></p>
+        </div>
 
-            <div id="bot-section" style="display: none; text-align: left;">
-                <h2 style="color: #fff; margin-bottom: 15px; text-align: center;">🤖 Бот-панель</h2>
-                <div id="chat-messages" style="background: #161b22; border: 1px solid #21262d; height: 250px; border-radius: 8px; padding: 10px; overflow-y: auto; margin-bottom: 10px; font-size: 14px;">
-                    <div style="color: #9ca3af;">Бот: Здарова! Я на связи. Чё замутим?</div>
-                </div>
-                <div style="display: flex; gap: 8px;">
-                    <input type="text" id="chat-input" placeholder="Написать боту..." style="margin-bottom: 0;">
-                    <button class="action-btn" style="width: auto; padding: 0 16px;" onclick="sendMessage()">➜</button>
-                </div>
-            </div>
+        <div id="admin-panel-box" style="display: none;">
+            <h2 style="color: #fff; margin-bottom: 15px; text-align: center;">⚡ Управление</h2>
+            
+            <p style="font-size: 12px; color: #58a6ff; margin-bottom: 5px; font-weight: bold;">Создать новый промокод:</p>
+            <input type="text" id="new-code" placeholder="Код (например NEWYEAR)">
+            <input type="number" id="new-days" placeholder="Дней действия">
+            <input type="number" id="new-uses" placeholder="Количество активаций">
+            <button class="action-btn" onclick="createPromo()" style="margin-bottom: 15px;">Создать промокод</button>
+
+            <p style="font-size: 12px; color: #58a6ff; margin-bottom: 5px; font-weight: bold;">Логи активности (кто заходил / действия):</p>
+            <div id="logs-container" class="log-box">Загрузка логов...</div>
+
+            <button class="action-btn" onclick="adminLogout()" style="background: #da3633; margin-top: 15px;">Выйти из админки</button>
         </div>
     </div>
+</div>
 
 <script>
+    // Генерация уникального ID юзера для отслеживания сессии
     let userId = localStorage.getItem('p1xly_user_id');
     if (!userId) {
-        userId = 'user_' + Math.random().toString(36).substring(2, 9);
+        userId = 'user_' + Math.random().toString(36).substring(2, 11);
         localStorage.setItem('p1xly_user_id', userId);
     }
 
-    function switchTab(tab) {
-        document.getElementById('tab-home').style.display = tab === 'home' ? 'flex' : 'none';
-        document.getElementById('tab-bot').style.display = tab === 'bot' ? 'flex' : 'none';
-        
-        document.getElementById('btn-home').className = tab === 'home' ? 'active' : '';
-        document.getElementById('btn-bot').className = tab === 'bot' ? 'active' : '';
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
 
-        if (tab === 'bot') checkSubscription();
+        if (tabName === 'home') {
+            document.querySelectorAll('.tab')[0].classList.add('active');
+            document.getElementById('home-section').classList.add('active');
+            loadHomeData();
+        } else if (tabName === 'bot') {
+            document.querySelectorAll('.tab')[1].classList.add('active');
+            document.getElementById('bot-section').classList.add('active');
+            checkSubscription();
+        } else if (tabName === 'admin') {
+            document.querySelectorAll('.tab')[2].classList.add('active');
+            document.getElementById('admin-section').classList.add('active');
+        }
     }
 
-    // Загрузка данных главной страницы
-    fetch('/api/data')
-        .then(res => res.json())
-        .then(data => {
-            document.getElementById('bio').innerText = data.bio;
-            const container = document.getElementById('links-container');
-            const categories = { bots: '🤖 Боты', channels: '📢 Каналы', contacts: '🔗 Связь' };
-
-            Object.keys(categories).forEach(cat => {
-                const catLinks = data.links.filter(l => l.category === cat);
-                if (catLinks.length > 0) {
-                    container.innerHTML += `<div class="section-title">${categories[cat]}</div>`;
-                    catLinks.forEach(l => {
-                        container.innerHTML += `
-                            <a href="${l.url}" target="_blank" class="link-card">
-                                <span>${l.title}</span>
-                                <span>→</span>
-                            </a>`;
-                    });
-                }
-            });
+    async function loadHomeData() {
+        let res = await fetch('/api/data');
+        let data = await res.json();
+        document.getElementById('bio-text').innerText = data.bio;
+        let container = document.getElementById('links-container');
+        container.innerHTML = '';
+        data.links.forEach(link => {
+            container.innerHTML += `<a href="${link.url}" target="_blank" class="link-item">${link.title}</a>`;
         });
+    }
 
     async function checkSubscription() {
         let res = await fetch('/api/check-sub', {
@@ -117,48 +141,141 @@
             body: JSON.stringify({ userId })
         });
         let data = await res.json();
+
         if (data.active) {
             document.getElementById('paywall-section').style.display = 'none';
-            document.getElementById('bot-section').style.display = 'block';
+            document.getElementById('control-panel').style.display = 'block';
+
+            let select = document.getElementById('account-select');
+            select.innerHTML = '';
+            data.accounts.forEach(acc => {
+                select.innerHTML += `<option value="${acc.id}">${acc.name}</option>`;
+            });
         } else {
             document.getElementById('paywall-section').style.display = 'block';
-            document.getElementById('bot-section').style.display = 'none';
+            document.getElementById('control-panel').style.display = 'none';
         }
     }
 
     async function activatePromo() {
         let code = document.getElementById('promo-input').value.trim();
-        let err = document.getElementById('error-msg');
-        err.innerText = '';
-        
+        let status = document.getElementById('promo-status');
+        status.innerText = '';
+
+        if (!code) {
+            status.style.color = '#ef4444';
+            status.innerText = 'Введите промокод!';
+            return;
+        }
+
         let res = await fetch('/api/activate-promo', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId, code })
         });
         let data = await res.json();
+
         if (data.success) {
-            alert(data.message);
-            checkSubscription();
+            status.style.color = '#238636';
+            status.innerText = data.message;
+            setTimeout(checkSubscription, 1000);
         } else {
-            err.innerText = data.message;
+            status.style.color = '#ef4444';
+            status.innerText = data.message;
         }
     }
 
-    function sendMessage() {
-        let input = document.getElementById('chat-input');
-        let box = document.getElementById('chat-messages');
-        if (!input.value.trim()) return;
+    async function sendTgMessage() {
+        let accountId = document.getElementById('account-select').value;
+        let recipient = document.getElementById('recipient-input').value.trim();
+        let message = document.getElementById('chat-input').value.trim();
+        let status = document.getElementById('send-status');
+        status.innerText = '';
 
-        box.innerHTML += `<div style="margin-bottom: 6px;">Ты: ${input.value}</div>`;
-        let text = input.value;
-        input.value = '';
+        if (!recipient || !message) {
+            status.style.color = '#ef4444';
+            status.innerText = 'Заполни получателя и текст!';
+            return;
+        }
 
-        setTimeout(() => {
-            box.innerHTML += `<div style="margin-bottom: 6px; color: #3b82f6;">Бот: Получено -> ${text}</div>`;
-            box.scrollTop = box.scrollHeight;
-        }, 400);
+        let res = await fetch('/api/tg/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, accountId, recipient, message })
+        });
+        let data = await res.json();
+        
+        if (data.success) {
+            status.style.color = '#238636';
+            status.innerText = data.message;
+            document.getElementById('chat-input').value = '';
+        } else {
+            status.style.color = '#ef4444';
+            status.innerText = data.message;
+        }
     }
+
+    async function adminLogin() {
+        let password = document.getElementById('admin-pass').value;
+        let status = document.getElementById('login-status');
+        let res = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password })
+        });
+        let data = await res.json();
+        if (data.success) {
+            document.getElementById('admin-login-box').style.display = 'none';
+            document.getElementById('admin-panel-box').style.display = 'block';
+            loadAdminData();
+        } else {
+            status.style.color = '#ef4444';
+            status.innerText = data.error;
+        }
+    }
+
+    async function adminLogout() {
+        await fetch('/api/logout', { method: 'POST' });
+        document.getElementById('admin-login-box').style.display = 'block';
+        document.getElementById('admin-panel-box').style.display = 'none';
+        document.getElementById('admin-pass').value = '';
+    }
+
+    async function createPromo() {
+        let code = document.getElementById('new-code').value.trim();
+        let days = document.getElementById('new-days').value;
+        let uses = document.getElementById('new-uses').value;
+
+        let res = await fetch('/api/admin/promocodes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code, days, uses })
+        });
+        let data = await res.json();
+        if (data.success) {
+            alert('Промокод успешно создан!');
+            document.getElementById('new-code').value = '';
+            document.getElementById('new-days').value = '';
+            document.getElementById('new-uses').value = '';
+            loadAdminData();
+        } else {
+            alert(data.message);
+        }
+    }
+
+    async function loadAdminData() {
+        let res = await fetch('/api/admin/data');
+        if (res.ok) {
+            let data = await res.json();
+            let logsContainer = document.getElementById('logs-container');
+            logsContainer.innerHTML = '';
+            data.logs.forEach(log => {
+                logsContainer.innerHTML += `[${log.timestamp}] Юзер: ${log.user_id} -> ${log.action}<br>`;
+            });
+        }
+    }
+
+    loadHomeData();
 </script>
 </body>
 </html>
