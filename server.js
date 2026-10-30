@@ -41,7 +41,7 @@ db.serialize(() => {
     // Таблица для логирования активности юзеров (кто зашел, кто активировал)
     db.run(`CREATE TABLE IF NOT EXISTS activity_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT, action TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)`);
 
-    db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('bio', 'Кодер. Пишу ботов, софт и скрипты.')`);
+    db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('bio', 'для покупки промокода @zxc_micc')`);
     // Дефолтный промокод
     db.run(`INSERT OR IGNORE INTO promocodes (code, days, uses_left) VALUES ('BRO2026', 7, 10)`);
 });
