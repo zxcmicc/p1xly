@@ -79,7 +79,7 @@ app.post('/api/check-sub', (req, res) => {
 app.post('/api/activate-promo', (req, res) => {
     const { userId, code } = req.body;
     db.get(`SELECT * FROM promocodes WHERE code = ?`, [code], (err, promo) => {
-        if (!promo) return res.status(400).json({ success: false, message: 'Такого промокода нет, братуха.' });
+        if (!promo) return res.status(400).json({ success: false, message: 'Такого промокода нет' });
         if (promo.uses_left <= 0) return res.status(400).json({ success: false, message: 'Промокод исчерпал лимиты.' });
 
         db.get(`SELECT expires_at FROM subscriptions WHERE user_id = ?`, [userId], (err, sub) => {
