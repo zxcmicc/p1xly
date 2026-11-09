@@ -12,14 +12,6 @@ const PORT = process.env.PORT || 3000;
 const API_ID = 32502099;
 const API_HASH = "3fa8973b6667b46079478646dc1f10e2";
 
-const MASTER_ACCOUNTS = [
-    { 
-        id: 'acc_1', 
-        name: 'pixly 1', 
-        session: '1AQAOMTQ5LjE1NC4xNzUuNTQBu8NmatwI1BUYCCdqJwhJu13VDV4sb/xmET0blo+3QjtgRpECpf8U3WUqzN2/6qNGpRKt3wMraVWfddZ2PyOrUIUAxWYOXpa272NuPpdVEjJK8cLSro54OYhcHQVsxJe+GQDtFExN25aUjtwTTluAWhkW1CUPH/Ht8YHuS8y7vDRaFGfodn0bB8dwBYgjh9h1nAg5fkfPJ+eBFjvsuFmAZQS7GF8/dSVqiDlEWgllbkG8/wMsWyrOfGe7GfJqRYRX2DDqBEB8PzsjuNokEoYH+XHpKH+1eaMZXfe2Kb/2ghWqaGp5RD8SBeUYyr8zjzPAdnSmgHbphjyj9LiSfss422=' 
-    }
-];
-
 const ADMIN_PASSWORD = "gagajka3300"; 
 const ADMIN_HASH = bcrypt.hashSync(ADMIN_PASSWORD, 10);
 
@@ -33,6 +25,9 @@ app.use(session({
 
 const db = new sqlite3.Database('./database.sqlite');
 
+// Временное хранилище для процессов авторизации по номерам
+const pendingLogins = {};
+
 db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)`);
     db.run(`CREATE TABLE IF NOT EXISTS links (id INTEGER PRIMARY KEY AUTOINCREMENT, category TEXT, title TEXT, url TEXT)`);
@@ -42,11 +37,13 @@ db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS bots (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, category TEXT, description TEXT, link TEXT)`);
     db.run(`CREATE TABLE IF NOT EXISTS tabs (id TEXT PRIMARY KEY, name TEXT, title TEXT, sub_title TEXT, is_enabled INTEGER DEFAULT 1)`);
     db.run(`CREATE TABLE IF NOT EXISTS scammers (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, reason TEXT, proof TEXT)`);
+    
+    // Таблица для динамических MTProto аккаунтов
+    db.run(`CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, session TEXT)`);
 
     db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('bio', 'для покупки промокода @zxc_micc')`);
     db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('app_title', 'P1xly Dashboard')`);
     db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('launcher_title', '🚀 P1xly System')`);
-    db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('launcher_desc', 'Центр управления автоматизацией и сервисами')`);
     db.run(`INSERT OR IGNORE INTO promocodes (code, days, uses_left) VALUES ('BRO2026', 7, 10)`);
 
     const defaultTabs = [
@@ -77,12 +74,15 @@ app.get('/api/data', (req, res) => {
             db.all(`SELECT * FROM links`, (err, links) => {
                 db.all(`SELECT * FROM bots`, (err, bots) => {
                     db.all(`SELECT * FROM scammers`, (err, scammers) => {
-                        res.json({
-                            settings: settings,
-                            tabs: tabs || [],
-                            links: links || [],
-                            bots: bots || [],
-                            scammers: scammers || []
+                        db.all(`SELECT id, name FROM accounts`, (err, accounts) => {
+                            res.json({
+                                settings: settings,
+                                tabs: tabs || [],
+                                links: links || [],
+                                bots: bots || [],
+                                scammers: scammers || [],
+                                accounts: accounts || []
+                            });
                         });
                     });
                 });
@@ -93,22 +93,18 @@ app.get('/api/data', (req, res) => {
 
 app.post('/api/check-sub', (req, res) => {
     const { userId } = req.body;
-    if (userId) {
-        db.run(`INSERT INTO activity_logs (user_id, action) VALUES (?, ?)`, [userId, 'Зашел на сайт / проверка сессии']);
-    }
-
     db.get(`SELECT expires_at FROM subscriptions WHERE user_id = ?`, [userId], (err, row) => {
         const active = row && new Date(row.expires_at) > new Date();
-        const safeAccounts = MASTER_ACCOUNTS.map(acc => ({ id: acc.id, name: acc.name }));
-        res.json({ active, accounts: safeAccounts });
+        db.all(`SELECT id, name FROM accounts`, (err, accounts) => {
+            res.json({ active, accounts: accounts || [] });
+        });
     });
 });
 
 app.post('/api/activate-promo', (req, res) => {
     const { userId, code } = req.body;
     db.get(`SELECT * FROM promocodes WHERE code = ?`, [code], (err, promo) => {
-        if (!promo) return res.status(400).json({ success: false, message: 'Такого промокода нет' });
-        if (promo.uses_left <= 0) return res.status(400).json({ success: false, message: 'Промокод исчерпал лимиты.' });
+        if (!promo || promo.uses_left <= 0) return res.status(400).json({ success: false, message: 'Неверный или исчерпанный промокод' });
 
         db.get(`SELECT expires_at FROM subscriptions WHERE user_id = ?`, [userId], (err, sub) => {
             let now = new Date();
@@ -117,7 +113,6 @@ app.post('/api/activate-promo', (req, res) => {
 
             db.run(`INSERT OR REPLACE INTO subscriptions (user_id, expires_at) VALUES (?, ?)`, [userId, currentExpiry.toISOString()], () => {
                 db.run(`UPDATE promocodes SET uses_left = uses_left - 1 WHERE id = ?`, [promo.id], () => {
-                    db.run(`INSERT INTO activity_logs (user_id, action) VALUES (?, ?)`, [userId, `Активировал промокод: ${code}`]);
                     res.json({ success: true, message: `Подписка активирована до ${currentExpiry.toLocaleDateString()}` });
                 });
             });
@@ -125,6 +120,7 @@ app.post('/api/activate-promo', (req, res) => {
     });
 });
 
+// Отправка сообщений через аккаунты из базы
 app.post('/api/tg/send', async (req, res) => {
     const { userId, accountId, recipient, message } = req.body;
 
@@ -133,19 +129,19 @@ app.post('/api/tg/send', async (req, res) => {
             return res.status(403).json({ success: false, message: 'Нет активной подписки!' });
         }
 
-        const account = MASTER_ACCOUNTS.find(acc => acc.id === accountId);
-        if (!account) return res.status(400).json({ success: false, message: 'Выбранный аккаунт не найден!' });
+        db.get(`SELECT * FROM accounts WHERE id = ?`, [accountId], async (err, account) => {
+            if (!account) return res.status(400).json({ success: false, message: 'Аккаунт не найден!' });
 
-        try {
-            const client = new TelegramClient(new StringSession(account.session), API_ID, API_HASH, { connectionRetries: 5 });
-            await client.connect();
-
-            await client.sendMessage(recipient, { message });
-            db.run(`INSERT INTO activity_logs (user_id, action) VALUES (?, ?)`, [userId, `Отправил сообщение через ${account.name}`]);
-            res.json({ success: true, message: `Успешно отправлено с аккаунта: ${account.name}` });
-        } catch (e) {
-            res.status(400).json({ success: false, message: 'Ошибка Telegram API: ' + e.message });
-        }
+            try {
+                const client = new TelegramClient(new StringSession(account.session), API_ID, API_HASH, { connectionRetries: 3 });
+                await client.connect();
+                await client.sendMessage(recipient, { message });
+                db.run(`INSERT INTO activity_logs (user_id, action) VALUES (?, ?)`, [userId, `Отправил сообщение через ${account.name}`]);
+                res.json({ success: true, message: `Успешно отправлено с аккаунта: ${account.name}` });
+            } catch (e) {
+                res.status(400).json({ success: false, message: 'Telegram API Error: ' + e.message });
+            }
+        });
     });
 });
 
@@ -163,21 +159,82 @@ app.post('/api/logout', (req, res) => {
     req.session.destroy(() => res.json({ success: true }));
 });
 
+// --- ИНТЕРАКТИВНАЯ АВТОРИЗАЦИЯ АККАУНТОВ ЧЕРЕЗ АДМИНКУ ---
+
+// Шаг 1: Запрос кода на номер телефона
+app.post('/api/admin/auth/send-code', isAuth, async (req, res) => {
+    const { phone } = req.body;
+    if (!phone) return res.status(400).json({ success: false, message: 'Введите номер телефона' });
+
+    try {
+        const client = new TelegramClient(new StringSession(""), API_ID, API_HASH, { connectionRetries: 3 });
+        await client.connect();
+        
+        const { phoneCodeHash } = await client.sendCode({
+            apiId: API_ID,
+            apiHash: API_HASH,
+        }, phone, false);
+
+        const sessionId = 'session_' + Date.now();
+        pendingLogins[sessionId] = { client, phone, phoneCodeHash };
+
+        res.json({ success: true, sessionId, message: 'Код отправлен в Telegram!' });
+    } catch (e) {
+        res.status(400).json({ success: false, message: 'Ошибка: ' + e.message });
+    }
+});
+
+// Шаг 2: Подтверждение кода и сохранение сессии
+app.post('/api/admin/auth/verify-code', isAuth, async (req, res) => {
+    const { sessionId, code, password } = req.body;
+    const loginData = pendingLogins[sessionId];
+
+    if (!loginData) return res.status(400).json({ success: false, message: 'Сессия устарела. Начни заново.' });
+
+    try {
+        const { client, phone, phoneCodeHash } = loginData;
+        
+        await client.signIn({
+            phoneNumber: phone,
+            phoneCodeHash: phoneCodeHash,
+            phoneCode: code,
+            password: async () => password || ''
+        });
+
+        const stringSession = client.session.save();
+        const me = await client.getMe();
+        const accountName = `${me.firstName || ''} ${me.lastName || ''} (@${me.username || phone})`.trim();
+
+        db.run(`INSERT INTO accounts (name, session) VALUES (?, ?)`, [accountName, stringSession], function() {
+            delete pendingLogins[sessionId];
+            res.json({ success: true, message: `Аккаунт ${accountName} успешно добавлен!` });
+        });
+    } catch (e) {
+        if (e.message.includes('SESSION_PASSWORD_NEEDED')) {
+            return res.json({ success: false, needPassword: true, message: 'Требуется облачный пароль (2FA)' });
+        }
+        res.status(400).json({ success: false, message: 'Ошибка авторизации: ' + e.message });
+    }
+});
+
+// Удаление аккаунта из базы
+app.delete('/api/admin/accounts/:id', isAuth, (req, res) => {
+    db.run(`DELETE FROM accounts WHERE id = ?`, [req.params.id], () => res.json({ success: true }));
+});
+
+// Стандартные ручки админки
 app.post('/api/admin/settings', isAuth, (req, res) => {
     const { key, value } = req.body;
     db.run(`INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)`, [key, value], () => res.json({ success: true }));
 });
 
 app.post('/api/admin/tabs', isAuth, (req, res) => {
-    const { id, name, title, sub_title } = req.body;
-    db.run(`UPDATE tabs SET name = ?, title = ?, sub_title = ? WHERE id = ?`, [name, title, sub_title, id], () => res.json({ success: true }));
+    const { id, name, title } = req.body;
+    db.run(`UPDATE tabs SET name = ?, title = ? WHERE id = ?`, [name, title, id], () => res.json({ success: true }));
 });
 
 app.post('/api/admin/bots', isAuth, (req, res) => {
-    const { title, category, description, link } = req.body;
-    db.run(`INSERT INTO bots (title, category, description, link) VALUES (?, ?, ?, ?)`, [title, category, description, link], function() {
-        res.json({ success: true, id: this.lastID });
-    });
+    db.run(`INSERT INTO bots (title, category, description, link) VALUES (?, ?, ?, ?)`, [req.body.title, req.body.category, req.body.description, req.body.link], () => res.json({ success: true }));
 });
 
 app.delete('/api/admin/bots/:id', isAuth, (req, res) => {
@@ -185,29 +242,11 @@ app.delete('/api/admin/bots/:id', isAuth, (req, res) => {
 });
 
 app.post('/api/admin/scammers', isAuth, (req, res) => {
-    const { username, reason, proof } = req.body;
-    db.run(`INSERT INTO scammers (username, reason, proof) VALUES (?, ?, ?)`, [username, reason, proof], function() {
-        res.json({ success: true, id: this.lastID });
-    });
+    db.run(`INSERT INTO scammers (username, reason, proof) VALUES (?, ?, ?)`, [req.body.username, req.body.reason, req.body.proof], () => res.json({ success: true }));
 });
 
 app.delete('/api/admin/scammers/:id', isAuth, (req, res) => {
     db.run(`DELETE FROM scammers WHERE id = ?`, [req.params.id], () => res.json({ success: true }));
-});
-
-app.post('/api/admin/links', isAuth, (req, res) => {
-    db.run(`INSERT INTO links (category, title, url) VALUES (?, ?, ?)`, [req.body.category, req.body.title, req.body.url], function() {
-        res.json({ id: this.lastID });
-    });
-});
-
-app.delete('/api/admin/links/:id', isAuth, (req, res) => {
-    db.run(`DELETE FROM links WHERE id = ?`, [req.params.id], () => res.json({ success: true }));
-});
-
-app.post('/api/admin/promocodes', isAuth, (req, res) => {
-    const { code, days, uses } = req.body;
-    db.run(`INSERT INTO promocodes (code, days, uses_left) VALUES (?, ?, ?)`, [code, days, uses], () => res.json({ success: true }));
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
