@@ -24,8 +24,6 @@ app.use(session({
 }));
 
 const db = new sqlite3.Database('./database.sqlite');
-
-// Временное хранилище для процессов авторизации по номерам
 const pendingLogins = {};
 
 db.serialize(() => {
@@ -37,8 +35,6 @@ db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS bots (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, category TEXT, description TEXT, link TEXT)`);
     db.run(`CREATE TABLE IF NOT EXISTS tabs (id TEXT PRIMARY KEY, name TEXT, title TEXT, sub_title TEXT, is_enabled INTEGER DEFAULT 1)`);
     db.run(`CREATE TABLE IF NOT EXISTS scammers (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, reason TEXT, proof TEXT)`);
-    
-    // Таблица для динамических MTProto аккаунтов
     db.run(`CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, session TEXT)`);
 
     db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('bio', 'для покупки промокода @zxc_micc')`);
@@ -64,6 +60,11 @@ const isAuth = (req, res, next) => {
 };
 
 app.get('/ping', (req, res) => res.status(200).send('Alive'));
+
+// Проверка статуса админа для фронтенда
+app.get('/api/check-auth', (req, res) => {
+    res.json({ isAdmin: !!req.session.isAdmin });
+});
 
 app.get('/api/data', (req, res) => {
     db.all(`SELECT key, value FROM settings`, (err, settingsRows) => {
@@ -120,7 +121,6 @@ app.post('/api/activate-promo', (req, res) => {
     });
 });
 
-// Отправка сообщений через аккаунты из базы
 app.post('/api/tg/send', async (req, res) => {
     const { userId, accountId, recipient, message } = req.body;
 
@@ -159,9 +159,7 @@ app.post('/api/logout', (req, res) => {
     req.session.destroy(() => res.json({ success: true }));
 });
 
-// --- ИНТЕРАКТИВНАЯ АВТОРИЗАЦИЯ АККАУНТОВ ЧЕРЕЗ АДМИНКУ ---
-
-// Шаг 1: Запрос кода на номер телефона
+// Авторизация MTProto по номеру
 app.post('/api/admin/auth/send-code', isAuth, async (req, res) => {
     const { phone } = req.body;
     if (!phone) return res.status(400).json({ success: false, message: 'Введите номер телефона' });
@@ -184,21 +182,20 @@ app.post('/api/admin/auth/send-code', isAuth, async (req, res) => {
     }
 });
 
-// Шаг 2: Подтверждение кода и сохранение сессии
 app.post('/api/admin/auth/verify-code', isAuth, async (req, res) => {
     const { sessionId, code, password } = req.body;
     const loginData = pendingLogins[sessionId];
 
-    if (!loginData) return res.status(400).json({ success: false, message: 'Сессия устарела. Начни заново.' });
+    if (!loginData) return res.status(400).json({ success: false, message: 'Сессия устарела.' });
 
     try {
-        const { client, phone, phoneCodeHash } = loginData;
+        const { client, phone } = loginData;
         
-        await client.signIn({
-            phoneNumber: phone,
-            phoneCodeHash: phoneCodeHash,
-            phoneCode: code,
-            password: async () => password || ''
+        await client.start({
+            phoneNumber: async () => phone,
+            phoneCode: async () => code,
+            password: async () => password || '',
+            onError: (err) => { throw err; },
         });
 
         const stringSession = client.session.save();
@@ -210,27 +207,12 @@ app.post('/api/admin/auth/verify-code', isAuth, async (req, res) => {
             res.json({ success: true, message: `Аккаунт ${accountName} успешно добавлен!` });
         });
     } catch (e) {
-        if (e.message.includes('SESSION_PASSWORD_NEEDED')) {
-            return res.json({ success: false, needPassword: true, message: 'Требуется облачный пароль (2FA)' });
-        }
         res.status(400).json({ success: false, message: 'Ошибка авторизации: ' + e.message });
     }
 });
 
-// Удаление аккаунта из базы
 app.delete('/api/admin/accounts/:id', isAuth, (req, res) => {
     db.run(`DELETE FROM accounts WHERE id = ?`, [req.params.id], () => res.json({ success: true }));
-});
-
-// Стандартные ручки админки
-app.post('/api/admin/settings', isAuth, (req, res) => {
-    const { key, value } = req.body;
-    db.run(`INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)`, [key, value], () => res.json({ success: true }));
-});
-
-app.post('/api/admin/tabs', isAuth, (req, res) => {
-    const { id, name, title } = req.body;
-    db.run(`UPDATE tabs SET name = ?, title = ? WHERE id = ?`, [name, title, id], () => res.json({ success: true }));
 });
 
 app.post('/api/admin/bots', isAuth, (req, res) => {
