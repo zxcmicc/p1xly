@@ -6,49 +6,78 @@
     <title>P1xly Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen">
-    <div id="app" class="max-w-6xl mx-auto p-6">
-        <!-- Верхнее меню динамических вкладок -->
-        <nav id="nav-tabs" class="flex flex-wrap gap-3 mb-8 border-b border-slate-800 pb-4">
-            <!-- Динамически заполнится из БД -->
-        </nav>
+<body class="bg-slate-950 text-slate-100 min-h-screen relative pb-12">
+    <!-- Toast контейнер -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 space-y-2"></div>
 
-        <!-- Контент страниц -->
-        <main id="main-content">
-            <!-- Динамический контент -->
-        </main>
+    <div class="max-w-6xl mx-auto p-6">
+        <!-- Шапка со статистикой -->
+        <header class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-900 border border-slate-800 p-6 rounded-3xl">
+            <div>
+                <h1 class="text-2xl font-black bg-gradient-to-r from-indigo-400 to-emerald-400 bg-clip-text text-transparent">P1XLY SYSTEM</h1>
+                <p class="text-xs text-slate-400 mt-1">Панель управления сервисами и автоматизацией</p>
+            </div>
+            <div id="stats-box" class="flex gap-4 text-xs font-medium">
+                <div class="bg-slate-950 border border-slate-800 px-4 py-2 rounded-2xl">🤖 Ботов: <span id="stat-bots" class="text-indigo-400 font-bold">0</span></div>
+                <div class="bg-slate-950 border border-slate-800 px-4 py-2 rounded-2xl">🟢 Аккаунтов: <span id="stat-accs" class="text-emerald-400 font-bold">0</span></div>
+                <div class="bg-slate-950 border border-slate-800 px-4 py-2 rounded-2xl">🚨 Скамеров: <span id="stat-scam" class="text-red-400 font-bold">0</span></div>
+            </div>
+        </header>
+
+        <!-- Навигация -->
+        <nav id="nav-tabs" class="flex flex-wrap gap-3 mb-8 border-b border-slate-800 pb-4"></nav>
+
+        <!-- Контент -->
+        <main id="main-content"></main>
     </div>
 
     <script>
         let appData = {};
         let currentUserId = localStorage.getItem('p1xly_user_id') || 'user_' + Math.random().toString(36).substring(2, 9);
         localStorage.setItem('p1xly_user_id', currentUserId);
+        let activeTab = 'catalog';
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `px-5 py-3 rounded-2xl border text-sm font-medium shadow-2xl transition transform translate-y-2 opacity-0 ${type === 'success' ? 'bg-emerald-950/90 border-emerald-800 text-emerald-300' : 'bg-red-950/90 border-red-800 text-red-300'}`;
+            toast.innerText = message;
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 50);
+            setTimeout(() => {
+                toast.classList.add('translate-y-2', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
 
         async function loadData() {
             const res = await fetch('/api/data');
             appData = await res.json();
+            updateStats();
             renderNav();
             renderActiveTab();
         }
 
-        let activeTab = 'catalog';
+        function updateStats() {
+            if (!appData.stats) return;
+            document.getElementById('stat-bots').innerText = appData.stats.botsCount;
+            document.getElementById('stat-accs').innerText = appData.stats.accountsCount;
+            document.getElementById('stat-scam').innerText = appData.stats.scammersCount;
+        }
 
         function renderNav() {
             const nav = document.getElementById('nav-tabs');
             nav.innerHTML = '';
-            
             if (appData.tabs) {
                 appData.tabs.forEach(tab => {
                     if (!tab.is_enabled && !localStorage.getItem('isAdmin')) return;
-                    const btn = document.createElement('button3' || 'button');
+                    const btn = document.createElement('button');
                     btn.className = `px-4 py-2 rounded-xl font-medium transition ${activeTab === tab.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'bg-slate-900 text-slate-400 hover:bg-slate-800'}`;
                     btn.innerText = tab.name;
                     btn.onclick = () => { activeTab = tab.id; renderActiveTab(); };
                     nav.appendChild(btn);
                 });
             }
-
-            // Кнопка админки
             const adminBtn = document.createElement('button');
             adminBtn.className = `px-4 py-2 rounded-xl font-medium transition bg-slate-900 text-red-400 border border-red-900/50 hover:bg-red-950/30 ml-auto`;
             adminBtn.innerText = '⚙️ Админка';
@@ -62,14 +91,16 @@
             
             if (activeTab === 'catalog') {
                 main.innerHTML = `
-                    <h2 class="text-2xl font-bold mb-6">${appData.settings?.launcher_title || 'Каталог'}</h2>
+                    <h2 class="text-2xl font-bold mb-6">Каталог ботов</h2>
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         ${(appData.bots || []).map(b => `
-                            <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
-                                <span class="text-xs px-2.5 py-1 bg-indigo-500/10 text-indigo-400 rounded-lg">${b.category}</span>
-                                <h3 class="text-lg font-bold mt-3">${b.title}</h3>
-                                <p class="text-sm text-slate-400 mt-1">${b.description}</p>
-                                <a href="${b.link}" target="_blank" class="mt-4 block text-center bg-indigo-600 hover:bg-indigo-500 py-2 rounded-xl font-medium transition">Открыть</a>
+                            <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex flex-col justify-between">
+                                <div>
+                                    <span class="text-xs px-2.5 py-1 bg-indigo-500/10 text-indigo-400 rounded-lg">${b.category}</span>
+                                    <h3 class="text-lg font-bold mt-3">${b.title}</h3>
+                                    <p class="text-sm text-slate-400 mt-1">${b.description}</p>
+                                </div>
+                                <a href="${b.link}" target="_blank" class="mt-6 block text-center bg-indigo-600 hover:bg-indigo-500 py-2.5 rounded-xl font-medium transition">Открыть</a>
                             </div>
                         `).join('')}
                     </div>
@@ -85,7 +116,7 @@
                     main.innerHTML = `
                         <div class="max-w-md mx-auto bg-slate-900 border border-slate-800 p-8 rounded-3xl text-center">
                             <h2 class="text-2xl font-bold text-red-400">Требуется подписка</h2>
-                            <p class="text-slate-400 mt-2">Для использования мульти-аккаунт отправки активируйте подписку во вкладке «Подписка».</p>
+                            <p class="text-slate-400 mt-2">Активируйте промокод во вкладке «Подписка» для работы со спаммером.</p>
                         </div>
                     `;
                     return;
@@ -96,7 +127,7 @@
                         <h2 class="text-xl font-bold mb-6">Мульти-аккаунт отправка</h2>
                         <div class="space-y-4">
                             <div>
-                                <label class="text-sm text-slate-400">Аккаунт:</label>
+                                <label class="text-sm text-slate-400">Живой аккаунт:</label>
                                 <select id="accId" class="w-full mt-1 bg-slate-950 border border-slate-800 p-3 rounded-xl">
                                     ${(subCheck.accounts || []).map(a => `<option value="${a.id}">${a.name}</option>`).join('')}
                                 </select>
@@ -110,7 +141,6 @@
                                 <textarea id="msgText" class="w-full mt-1 bg-slate-950 border border-slate-800 p-3 rounded-xl" placeholder="Текст сообщения..."></textarea>
                             </div>
                             <button onclick="sendMessage()" class="w-full bg-emerald-600 hover:bg-emerald-500 py-3 rounded-xl font-bold transition">Отправить</button>
-                            <p id="sendResult" class="text-sm text-center mt-2"></p>
                         </div>
                     </div>
                 `;
@@ -129,6 +159,18 @@
                         `).join('')}
                     </div>
                 `;
+            } else if (activeTab === 'faq') {
+                main.innerHTML = `
+                    <h2 class="text-2xl font-bold mb-6">📖 Инструкция и FAQ</h2>
+                    <div class="space-y-4">
+                        ${(appData.faq || []).map(f => `
+                            <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
+                                <h3 class="font-bold text-indigo-400">${f.question}</h3>
+                                <p class="text-sm text-slate-300 mt-2">${f.answer}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
             } else if (activeTab === 'owner') {
                 main.innerHTML = `
                     <div class="max-w-md mx-auto bg-slate-900 border border-slate-800 p-8 rounded-3xl text-center">
@@ -142,7 +184,6 @@
                         <h2 class="text-xl font-bold mb-4">Активация подписки</h2>
                         <input type="text" id="promoCode" placeholder="Введите промокод" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl mb-4">
                         <button onclick="activatePromo()" class="w-full bg-indigo-600 hover:bg-indigo-500 py-3 rounded-xl font-bold transition">Активировать</button>
-                        <p id="promoRes" class="text-sm text-center mt-3"></p>
                     </div>
                 `;
             } else if (activeTab === 'admin') {
@@ -163,44 +204,56 @@
                                 <button onclick="logoutAdmin()" class="bg-red-600 hover:bg-red-500 px-4 py-2 rounded-xl text-sm">Выйти</button>
                             </div>
                             
-                            <!-- Добавление аккаунта MTProto -->
+                            <!-- Управление аккаунтами -->
                             <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl">
-                                <h3 class="text-lg font-bold mb-4">🤖 Авторизация Telegram аккаунта</h3>
+                                <h3 class="text-lg font-bold mb-4">🟢 Управление аккаунтами (Живой / Мертвый)</h3>
+                                <div class="space-y-3 mb-6">
+                                    ${(appData.accounts || []).map(a => `
+                                        <div class="flex justify-between items-center bg-slate-950 p-4 rounded-xl border border-slate-800">
+                                            <div>
+                                                <span class="font-bold ${a.is_alive ? 'text-emerald-400' : 'text-red-400'}">${a.name}</span>
+                                                <span class="text-xs ml-2 text-slate-500">(${a.is_alive ? 'Активен' : 'Мертв / В бане'})</span>
+                                            </div>
+                                            <div class="space-x-2">
+                                                <button onclick="toggleAcc(${a.id})" class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded-lg">Сменить статус</button>
+                                                <button onclick="deleteAcc(${a.id})" class="text-xs bg-red-950 text-red-400 hover:bg-red-900 px-3 py-2 rounded-lg">Удалить</button>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                <h4 class="text-md font-bold mb-2">Добавить MTProto аккаунт</h4>
                                 <div id="tgStep1" class="space-y-3">
                                     <input type="text" id="tgPhone" placeholder="+998..." class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl">
                                     <button onclick="tgSendCode()" class="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-xl">Запросить код</button>
                                 </div>
                                 <div id="tgStep2" class="space-y-3 hidden mt-4">
                                     <input type="text" id="tgCode" placeholder="Код из Телеграма" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl">
-                                    <input type="password" id="tgPassword" placeholder="Облачный пароль 2FA (если есть)" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl">
-                                    <button onclick="tgVerifyCode()" class="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-xl">Подтвердить и добавить</button>
+                                    <input type="password" id="tgPassword" placeholder="Облачный пароль 2FA" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl">
+                                    <button onclick="tgVerifyCode()" class="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-xl">Подтвердить</button>
                                 </div>
                                 <p id="tgRes" class="text-sm mt-3"></p>
                             </div>
 
+                            <!-- Управление FAQ -->
+                            <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl">
+                                <h3 class="text-lg font-bold mb-4">📖 Добавить вопрос в FAQ</h3>
+                                <div class="space-y-3">
+                                    <input type="text" id="faqQ" placeholder="Вопрос" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl">
+                                    <textarea id="faqA" placeholder="Ответ" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl"></textarea>
+                                    <button onclick="addFaq()" class="bg-indigo-600 hover:bg-indigo-500 px-6 py-2 rounded-xl">Добавить гайд</button>
+                                </div>
+                            </div>
+
                             <!-- Управление ботами -->
                             <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl">
-                                <h3 class="text-lg font-bold mb-4">Добавить бота в каталог</h3>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <h3 class="text-lg font-bold mb-4">🤖 Добавить бота в каталог</h3>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
                                     <input type="text" id="botTitle" placeholder="Название" class="bg-slate-950 border border-slate-800 p-3 rounded-xl">
                                     <input type="text" id="botCategory" placeholder="Категория" class="bg-slate-950 border border-slate-800 p-3 rounded-xl">
                                     <input type="text" id="botDesc" placeholder="Описание" class="bg-slate-950 border border-slate-800 p-3 rounded-xl">
                                     <input type="text" id="botLink" placeholder="Ссылка (https://t.me/...)" class="bg-slate-950 border border-slate-800 p-3 rounded-xl">
                                 </div>
-                                <button onclick="addBot()" class="mt-4 bg-indigo-600 hover:bg-indigo-500 px-6 py-2 rounded-xl">Добавить бота</button>
-                            </div>
-
-                            <!-- Логи -->
-                            <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl">
-                                <h3 class="text-lg font-bold mb-4">📜 Логи активности</h3>
-                                <div class="space-y-2 max-h-60 overflow-y-auto">
-                                    ${(appData.logs || []).map(l => `
-                                        <div class="text-xs bg-slate-950 p-3 rounded-xl border border-slate-800/50 flex justify-between">
-                                            <span><b>${l.user_id}</b>: ${l.action} (${l.ip})</span>
-                                            <span class="text-slate-500">${new Date(l.timestamp).toLocaleTimeString()}</span>
-                                        </div>
-                                    `).join('')}
-                                </div>
+                                <button onclick="addBot()" class="bg-indigo-600 hover:bg-indigo-500 px-6 py-2 rounded-xl">Добавить бота</button>
                             </div>
                         </div>
                     `;
@@ -219,8 +272,7 @@
                     message: document.getElementById('msgText').value
                 })
             }).then(r => r.json());
-            document.getElementById('sendResult').innerText = res.message;
-            document.getElementById('sendResult').className = `text-sm text-center mt-2 ${res.success ? 'text-emerald-400' : 'text-red-400'}`;
+            showToast(res.message, res.success ? 'success' : 'error');
         }
 
         async function activatePromo() {
@@ -229,8 +281,7 @@
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ userId: currentUserId, code: document.getElementById('promoCode').value })
             }).then(r => r.json());
-            document.getElementById('promoRes').innerText = res.message;
-            document.getElementById('promoRes').className = `text-sm text-center mt-3 ${res.success ? 'text-emerald-400' : 'text-red-400'}`;
+            showToast(res.message, res.success ? 'success' : 'error');
         }
 
         async function loginAdmin() {
@@ -239,14 +290,14 @@
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ password: document.getElementById('adminPass').value })
             }).then(r => r.json());
-            if (res.success) loadData();
-            else alert('Неверный пароль');
+            if (res.success) { showToast('Успешный вход!'); loadData(); }
+            else showToast('Неверный пароль', 'error');
         }
 
         async function logoutAdmin() {
-            await fetch('/api/post', { method: 'POST' }); // или стандартный логаут
             await fetch('/api/logout', { method: 'POST' });
             loadData();
+            showToast('Вышли из админки');
         }
 
         let pendingSessionId = '';
@@ -261,7 +312,7 @@
                 document.getElementById('tgStep1').classList.add('hidden');
                 document.getElementById('tgStep2').classList.remove('hidden');
             }
-            document.getElementById('tgRes').innerText = res.message;
+            showToast(res.message, res.success ? 'success' : 'error');
         }
 
         async function tgVerifyCode() {
@@ -274,8 +325,20 @@
                     password: document.getElementById('tgPassword').value
                 })
             }).then(r => r.json());
-            document.getElementById('tgRes').innerText = res.message;
+            showToast(res.message, res.success ? 'success' : 'error');
             if (res.success) setTimeout(() => loadData(), 1500);
+        }
+
+        async function toggleAcc(id) {
+            await fetch(`/api/admin/accounts/toggle/${id}`, { method: 'POST' });
+            loadData();
+            showToast('Статус аккаунта изменен');
+        }
+
+        async function deleteAcc(id) {
+            await fetch(`/api/admin/accounts/${id}`, { method: 'DELETE' });
+            loadData();
+            showToast('Аккаунт удален');
         }
 
         async function addBot() {
@@ -290,6 +353,20 @@
                 })
             });
             loadData();
+            showToast('Бот добавлен в каталог!');
+        }
+
+        async function addFaq() {
+            await fetch('/api/admin/faq', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    question: document.getElementById('faqQ').value,
+                    answer: document.getElementById('faqA').value
+                })
+            });
+            loadData();
+            showToast('Гайд добавлен в FAQ!');
         }
 
         loadData();
