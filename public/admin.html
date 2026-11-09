@@ -2,41 +2,68 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>p1xly // admin</title>
+    <title>p1xly // admin panel</title>
     <style>
-        body { background: #0b0e14; color: #fff; font-family: sans-serif; display: flex; justify-content: center; padding: 40px; }
-        .box { background: #11151c; border: 1px solid #1f242d; padding: 25px; border-radius: 12px; width: 100%; max-width: 500px; }
-        input, select, button { width: 100%; padding: 10px; margin-top: 8px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #333; background: #161b22; color: #fff; }
-        button { background: #3b82f6; border: none; cursor: pointer; font-weight: bold; }
-        .link-item { display: flex; justify-content: space-between; align-items: center; background: #161b22; padding: 10px; margin-bottom: 8px; border-radius: 6px; }
+        body { background: #0b0e14; color: #fff; font-family: system-ui, sans-serif; display: flex; justify-content: center; padding: 40px; }
+        .box { background: #11151c; border: 1px solid #1f242d; padding: 25px; border-radius: 12px; width: 100%; max-width: 650px; }
+        input, select, textarea, button { width: 100%; padding: 10px; margin-top: 6px; margin-bottom: 12px; border-radius: 6px; border: 1px solid #21293d; background: #161b22; color: #fff; box-sizing: border-box; }
+        button { background: #2563eb; border: none; cursor: pointer; font-weight: bold; }
+        button:hover { background: #1d4ed8; }
+        .item-row { display: flex; justify-content: space-between; align-items: center; background: #161b22; padding: 10px; margin-bottom: 8px; border-radius: 6px; border: 1px solid #21293d; }
         .del-btn { background: #ef4444; width: auto; padding: 5px 10px; margin: 0; }
+        h3 { margin-top: 25px; border-bottom: 1px solid #21293d; padding-bottom: 6px; color: #60a5fa; }
+        .tab-edit-box { background: #161b22; border: 1px solid #21293d; padding: 12px; border-radius: 8px; margin-bottom: 12px; }
     </style>
 </head>
 <body>
 <div class="box">
-    <h2>Админка p1xly</h2>
+    <h2>⚡ Админ-панель P1xly</h2>
+    
     <div id="login-form">
-        <input type="password" id="password" placeholder="Введи пароль">
+        <input type="password" id="password" placeholder="Пароль администратора">
         <button onclick="login()">Войти</button>
     </div>
 
     <div id="admin-panel" style="display:none;">
-        <h3>Редактировать Био</h3>
-        <input type="text" id="bio-input">
-        <button onclick="saveBio()">Сохранить Био</button>
 
-        <h3>Добавить ссылку</h3>
+        <h3>⚙️ Заголовки сайта</h3>
+        <input type="text" id="cfg-app_title" placeholder="Название в шапке">
+        <input type="text" id="cfg-launcher_title" placeholder="Заголовок лаунчера">
+        <button onclick="saveGlobalSettings()">Сохранить настройки</button>
+
+        <h3>📁 Управление вкладками</h3>
+        <div id="tabs-editor-container"></div>
+
+        <h3>🚨 База скамеров (Черный список)</h3>
+        <input type="text" id="scam-user" placeholder="Username (@scamer)">
+        <input type="text" id="scam-reason" placeholder="Причина">
+        <input type="text" id="scam-proof" placeholder="Пруфы (ссылка)">
+        <button onclick="addScammer()">Добавить в базу</button>
+        <div id="admin-scammers"></div>
+
+        <h3>🤖 Каталог Ботов</h3>
+        <input type="text" id="bot-title" placeholder="Название бота">
+        <input type="text" id="bot-cat" placeholder="Категория">
+        <input type="text" id="bot-desc" placeholder="Описание">
+        <input type="text" id="bot-link" placeholder="Ссылка (https://t.me/...)">
+        <button onclick="addBot()">Добавить бота</button>
+        <div id="admin-bots"></div>
+
+        <h3>👤 Био владельца</h3>
+        <textarea id="cfg-bio" rows="3"></textarea>
+        <button onclick="saveSetting('bio', document.getElementById('cfg-bio').value)">Сохранить Био</button>
+
+        <h3>🔗 Ссылки</h3>
         <select id="cat-input">
             <option value="bots">🤖 Бот</option>
             <option value="channels">📢 Канал</option>
             <option value="contacts">🔗 Связь</option>
         </select>
-        <input type="text" id="title-input" placeholder="Название (например, My Bot)">
-        <input type="text" id="url-input" placeholder="Ссылка (https://t.me/...)">
-        <button onclick="addLink()">Добавить</button>
-
-        <h3>Текущие ссылки</h3>
+        <input type="text" id="title-input" placeholder="Название">
+        <input type="text" id="url-input" placeholder="Ссылка">
+        <button onclick="addLink()">Добавить ссылку</button>
         <div id="admin-links"></div>
+
     </div>
 </div>
 
@@ -57,25 +84,114 @@
 
     function loadAdminData() {
         fetch('/api/data').then(res => res.json()).then(data => {
-            document.getElementById('bio-input').value = data.bio;
-            const container = document.getElementById('admin-links');
-            container.innerHTML = '';
-            data.links.forEach(l => {
-                container.innerHTML += `
-                    <div class="link-item">
+            const s = data.settings || {};
+            document.getElementById('cfg-app_title').value = s.app_title || '';
+            document.getElementById('cfg-launcher_title').value = s.launcher_title || '';
+            document.getElementById('cfg-bio').value = s.bio || '';
+
+            const tContainer = document.getElementById('tabs-editor-container');
+            tContainer.innerHTML = '';
+            (data.tabs || []).forEach(t => {
+                tContainer.innerHTML += `
+                    <div class="tab-edit-box">
+                        <b style="color: #60a5fa;">ID: ${t.id}</b>
+                        <input type="text" id="tab-name-${t.id}" value="${t.name}" placeholder="Имя вкладки">
+                        <input type="text" id="tab-title-${t.id}" value="${t.title}" placeholder="Заголовок">
+                        <button onclick="saveTab('${t.id}')">Обновить</button>
+                    </div>`;
+            });
+
+            const scamContainer = document.getElementById('admin-scammers');
+            scamContainer.innerHTML = '';
+            (data.scammers || []).forEach(sc => {
+                scamContainer.innerHTML += `
+                    <div class="item-row">
+                        <span><b>${sc.username}</b> — ${sc.reason}</span>
+                        <button class="del-btn" onclick="deleteScammer(${sc.id})">Удалить</button>
+                    </div>`;
+            });
+
+            const bContainer = document.getElementById('admin-bots');
+            bContainer.innerHTML = '';
+            (data.bots || []).forEach(b => {
+                bContainer.innerHTML += `
+                    <div class="item-row">
+                        <span><b>[${b.category}]</b> ${b.title}</span>
+                        <button class="del-btn" onclick="deleteBot(${b.id})">Удалить</button>
+                    </div>`;
+            });
+
+            const lContainer = document.getElementById('admin-links');
+            lContainer.innerHTML = '';
+            (data.links || []).forEach(l => {
+                lContainer.innerHTML += `
+                    <div class="item-row">
                         <span>[${l.category}] ${l.title}</span>
-                        <button class="del-btn" onclick="deleteLink(${l.id})">X</button>
+                        <button class="del-btn" onclick="deleteLink(${l.id})">Удалить</button>
                     </div>`;
             });
         });
     }
 
-    function saveBio() {
-        fetch('/api/admin/bio', {
+    function saveSetting(key, value) {
+        fetch('/api/admin/settings', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ bio: document.getElementById('bio-input').value })
-        }).then(() => alert('Био обновлено!'));
+            body: JSON.stringify({ key, value })
+        }).then(() => alert('Сохранено!'));
+    }
+
+    function saveGlobalSettings() {
+        saveSetting('app_title', document.getElementById('cfg-app_title').value);
+        saveSetting('launcher_title', document.getElementById('cfg-launcher_title').value);
+    }
+
+    function saveTab(id) {
+        let name = document.getElementById(`tab-name-${id}`).value;
+        let title = document.getElementById(`tab-title-${id}`).value;
+        fetch('/api/admin/tabs', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ id, name, title, sub_title: '' })
+        }).then(() => alert('Вкладка обновлена!'));
+    }
+
+    function addScammer() {
+        fetch('/api/admin/scammers', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                username: document.getElementById('scam-user').value,
+                reason: document.getElementById('scam-reason').value,
+                proof: document.getElementById('scam-proof').value
+            })
+        }).then(() => {
+            document.getElementById('scam-user').value = '';
+            document.getElementById('scam-reason').value = '';
+            document.getElementById('scam-proof').value = '';
+            loadAdminData();
+        });
+    }
+
+    function deleteScammer(id) {
+        fetch('/api/admin/scammers/' + id, { method: 'DELETE' }).then(() => loadAdminData());
+    }
+
+    function addBot() {
+        fetch('/api/admin/bots', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                title: document.getElementById('bot-title').value,
+                category: document.getElementById('bot-cat').value,
+                description: document.getElementById('bot-desc').value,
+                link: document.getElementById('bot-link').value
+            })
+        }).then(() => loadAdminData());
+    }
+
+    function deleteBot(id) {
+        fetch('/api/admin/bots/' + id, { method: 'DELETE' }).then(() => loadAdminData());
     }
 
     function addLink() {
