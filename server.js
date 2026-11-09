@@ -15,8 +15,8 @@ const API_HASH = "3fa8973b6667b46079478646dc1f10e2";
 const MASTER_ACCOUNTS = [
     { 
         id: 'acc_1', 
-        name: '𝑺𝑩𝑷 | Като 🎲', 
-        session: '1AQAOMTQ5LjE1NC4xNzUuNTQBu8NmatwI1BUYCCdqJwhJu13VDV4sb/xmET0blo+3QjtgRpECpf8U3WUqzN2/6qNGpRKt3wMraVWfddZ2PyOrUIUAxWYOXpa272NuPpdVEjJK8cLSro54OYhcHQVsxJe+GQDtFExN25aUjtwTTluAWhkW1CUPH/Ht8YHuS8y7vDRaFGfodn0bB8dwBYgjh9h1nAg5fkfPJ+eBFjvsuFmAZQS7GF8/dSVqiDlEWgllbkG8/wMsWyrOfGe7GfJqRYRX2DDqBEB8PzsjuNokEoYH+XHpKH+1eaMZXfe2Kb/2ghWqaGp5RD8SBeUYyr8zjzPAdnSmgHbphjyj9LiSfss4228=' 
+        name: 'pixly 1', 
+        session: '1AQAOMTQ5LjE1NC4xNzUuNTQBu8NmatwI1BUYCCdqJwhJu13VDV4sb/xmET0blo+3QjtgRpECpf8U3WUqzN2/6qNGpRKt3wMraVWfddZ2PyOrUIUAxWYOXpa272NuPpdVEjJK8cLSro54OYhcHQVsxJe+GQDtFExN25aUjtwTTluAWhkW1CUPH/Ht8YHuS8y7vDRaFGfodn0bB8dwBYgjh9h1nAg5fkfPJ+eBFjvsuFmAZQS7GF8/dSVqiDlEWgllbkG8/wMsWyrOfGe7GfJqRYRX2DDqBEB8PzsjuNokEoYH+XHpKH+1eaMZXfe2Kb/2ghWqaGp5RD8SBeUYyr8zjzPAdnSmgHbphjyj9LiSfss422=' 
     }
 ];
 
@@ -38,12 +38,27 @@ db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS links (id INTEGER PRIMARY KEY AUTOINCREMENT, category TEXT, title TEXT, url TEXT)`);
     db.run(`CREATE TABLE IF NOT EXISTS promocodes (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT, days INTEGER, uses_left INTEGER)`);
     db.run(`CREATE TABLE IF NOT EXISTS subscriptions (user_id TEXT PRIMARY KEY, expires_at TEXT)`);
-    // Таблица для логирования активности юзеров (кто зашел, кто активировал)
     db.run(`CREATE TABLE IF NOT EXISTS activity_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT, action TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)`);
+    db.run(`CREATE TABLE IF NOT EXISTS bots (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, category TEXT, description TEXT, link TEXT)`);
+    db.run(`CREATE TABLE IF NOT EXISTS tabs (id TEXT PRIMARY KEY, name TEXT, title TEXT, sub_title TEXT, is_enabled INTEGER DEFAULT 1)`);
+    db.run(`CREATE TABLE IF NOT EXISTS scammers (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, reason TEXT, proof TEXT)`);
 
     db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('bio', 'для покупки промокода @zxc_micc')`);
-    // Дефолтный промокод
+    db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('app_title', 'P1xly Dashboard')`);
+    db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('launcher_title', '🚀 P1xly System')`);
+    db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('launcher_desc', 'Центр управления автоматизацией и сервисами')`);
     db.run(`INSERT OR IGNORE INTO promocodes (code, days, uses_left) VALUES ('BRO2026', 7, 10)`);
+
+    const defaultTabs = [
+        ['catalog', 'Каталог', 'Доступные модули', 'Выберите бота или утилиту'],
+        ['sender', 'Отправка (MTProto)', 'Мульти-аккаунт отправка', 'Отправляй сообщения по промокоду'],
+        ['scammers', 'База скамеров', 'Черный список / Скамеры', 'Проверка пользователей'],
+        ['owner', 'О владельце', 'Информация о владельце', 'Обо мне и мои контакты'],
+        ['sub', 'Подписка', 'Активация подписки', 'Введи промокод для разблокировки']
+    ];
+    defaultTabs.forEach(t => {
+        db.run(`INSERT OR IGNORE INTO tabs (id, name, title, sub_title) VALUES (?, ?, ?, ?)`, t);
+    });
 });
 
 const isAuth = (req, res, next) => {
@@ -54,14 +69,28 @@ const isAuth = (req, res, next) => {
 app.get('/ping', (req, res) => res.status(200).send('Alive'));
 
 app.get('/api/data', (req, res) => {
-    db.get(`SELECT value FROM settings WHERE key = 'bio'`, (err, bioRow) => {
-        db.all(`SELECT * FROM links`, (err, links) => {
-            res.json({ bio: bioRow ? bioRow.value : '', links: links || [] });
+    db.all(`SELECT key, value FROM settings`, (err, settingsRows) => {
+        let settings = {};
+        if (settingsRows) settingsRows.forEach(r => settings[r.key] = r.value);
+
+        db.all(`SELECT * FROM tabs WHERE is_enabled = 1`, (err, tabs) => {
+            db.all(`SELECT * FROM links`, (err, links) => {
+                db.all(`SELECT * FROM bots`, (err, bots) => {
+                    db.all(`SELECT * FROM scammers`, (err, scammers) => {
+                        res.json({
+                            settings: settings,
+                            tabs: tabs || [],
+                            links: links || [],
+                            bots: bots || [],
+                            scammers: scammers || []
+                        });
+                    });
+                });
+            });
         });
     });
 });
 
-// Логирование входа юзера на сайт / проверку подписки
 app.post('/api/check-sub', (req, res) => {
     const { userId } = req.body;
     if (userId) {
@@ -75,7 +104,6 @@ app.post('/api/check-sub', (req, res) => {
     });
 });
 
-// Активация промокода с записью в логи
 app.post('/api/activate-promo', (req, res) => {
     const { userId, code } = req.body;
     db.get(`SELECT * FROM promocodes WHERE code = ?`, [code], (err, promo) => {
@@ -97,7 +125,6 @@ app.post('/api/activate-promo', (req, res) => {
     });
 });
 
-// Отправка сообщения
 app.post('/api/tg/send', async (req, res) => {
     const { userId, accountId, recipient, message } = req.body;
 
@@ -122,7 +149,6 @@ app.post('/api/tg/send', async (req, res) => {
     });
 });
 
-// Админка: Авторизация
 app.post('/api/login', (req, res) => {
     const { password } = req.body;
     if (bcrypt.compareSync(password, ADMIN_HASH)) {
@@ -133,34 +159,40 @@ app.post('/api/login', (req, res) => {
     }
 });
 
-// Админка: Выход (логенезер / логаут админа)
 app.post('/api/logout', (req, res) => {
-    req.session.destroy(() => {
-        res.json({ success: true });
-    });
+    req.session.destroy(() => res.json({ success: true }));
 });
 
-// Админка: Создание нового промокода
-app.post('/api/admin/promocodes', isAuth, (req, res) => {
-    const { code, days, uses } = req.body;
-    if (!code || !days || !uses) return res.status(400).json({ success: false, message: 'Заполни все поля для промокода!' });
+app.post('/api/admin/settings', isAuth, (req, res) => {
+    const { key, value } = req.body;
+    db.run(`INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)`, [key, value], () => res.json({ success: true }));
+});
 
-    db.run(`INSERT INTO promocodes (code, days, uses_left) VALUES (?, ?, ?)`, [code, days, uses], function() {
+app.post('/api/admin/tabs', isAuth, (req, res) => {
+    const { id, name, title, sub_title } = req.body;
+    db.run(`UPDATE tabs SET name = ?, title = ?, sub_title = ? WHERE id = ?`, [name, title, sub_title, id], () => res.json({ success: true }));
+});
+
+app.post('/api/admin/bots', isAuth, (req, res) => {
+    const { title, category, description, link } = req.body;
+    db.run(`INSERT INTO bots (title, category, description, link) VALUES (?, ?, ?, ?)`, [title, category, description, link], function() {
         res.json({ success: true, id: this.lastID });
     });
 });
 
-// Админка: Получить список созданных промокодов и логов активности
-app.get('/api/admin/data', isAuth, (req, res) => {
-    db.all(`SELECT * FROM promocodes`, (err, promos) => {
-        db.all(`SELECT * FROM activity_logs ORDER BY id DESC LIMIT 50`, (err, logs) => {
-            res.json({ promocodes: promos, logs: logs });
-        });
+app.delete('/api/admin/bots/:id', isAuth, (req, res) => {
+    db.run(`DELETE FROM bots WHERE id = ?`, [req.params.id], () => res.json({ success: true }));
+});
+
+app.post('/api/admin/scammers', isAuth, (req, res) => {
+    const { username, reason, proof } = req.body;
+    db.run(`INSERT INTO scammers (username, reason, proof) VALUES (?, ?, ?)`, [username, reason, proof], function() {
+        res.json({ success: true, id: this.lastID });
     });
 });
 
-app.post('/api/admin/bio', isAuth, (req, res) => {
-    db.run(`UPDATE settings SET value = ? WHERE key = 'bio'`, [req.body.bio], () => res.json({ success: true }));
+app.delete('/api/admin/scammers/:id', isAuth, (req, res) => {
+    db.run(`DELETE FROM scammers WHERE id = ?`, [req.params.id], () => res.json({ success: true }));
 });
 
 app.post('/api/admin/links', isAuth, (req, res) => {
@@ -171,6 +203,11 @@ app.post('/api/admin/links', isAuth, (req, res) => {
 
 app.delete('/api/admin/links/:id', isAuth, (req, res) => {
     db.run(`DELETE FROM links WHERE id = ?`, [req.params.id], () => res.json({ success: true }));
+});
+
+app.post('/api/admin/promocodes', isAuth, (req, res) => {
+    const { code, days, uses } = req.body;
+    db.run(`INSERT INTO promocodes (code, days, uses_left) VALUES (?, ?, ?)`, [code, days, uses], () => res.json({ success: true }));
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
