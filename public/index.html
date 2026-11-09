@@ -7,11 +7,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen relative pb-12">
-    <!-- Toast контейнер -->
     <div id="toast-container" class="fixed bottom-5 right-5 z-50 space-y-2"></div>
 
     <div class="max-w-6xl mx-auto p-6">
-        <!-- Шапка со статистикой -->
         <header class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-xl">
             <div>
                 <h1 id="app-header-title" class="text-2xl font-black bg-gradient-to-r from-indigo-400 to-emerald-400 bg-clip-text text-transparent">P1XLY SYSTEM</h1>
@@ -24,10 +22,9 @@
             </div>
         </header>
 
-        <!-- Динамическое меню вкладок -->
+        <!-- Меню вкладок -->
         <nav id="nav-tabs" class="flex flex-wrap gap-3 mb-8 border-b border-slate-800 pb-4"></nav>
 
-        <!-- Контент страниц -->
         <main id="main-content"></main>
     </div>
 
@@ -79,16 +76,26 @@
             const nav = document.getElementById('nav-tabs');
             nav.innerHTML = '';
             
-            if (appData.tabs) {
-                appData.tabs.forEach(tab => {
-                    if (!tab.is_enabled && !localStorage.getItem('isAdmin')) return;
-                    const btn = document.createElement('button');
-                    btn.className = `px-4 py-2 rounded-xl font-medium transition ${activeTab === tab.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'bg-slate-900 text-slate-400 hover:bg-slate-800'}`;
-                    btn.innerText = tab.name;
-                    btn.onclick = () => { activeTab = tab.id; renderActiveTab(); };
-                    nav.appendChild(btn);
-                });
-            }
+            // Жесткий фоллбек, если бэк не отдал вкладки
+            const defaultTabs = [
+                { id: 'catalog', name: 'Каталог' },
+                { id: 'sender', name: 'Отправка (MTProto)' },
+                { id: 'scammers', name: 'База скамеров' },
+                { id: 'faq', name: 'Инструкция' },
+                { id: 'owner', name: 'О владельце' },
+                { id: 'sub', name: 'Подписка' }
+            ];
+
+            const tabsToRender = (appData.tabs && appData.tabs.length > 0) ? appData.tabs : defaultTabs;
+
+            tabsToRender.forEach(tab => {
+                if (tab.is_enabled == 0 && !localStorage.getItem('isAdmin')) return;
+                const btn = document.createElement('button');
+                btn.className = `px-4 py-2 rounded-xl font-medium transition ${activeTab === tab.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'bg-slate-900 text-slate-400 hover:bg-slate-800'}`;
+                btn.innerText = tab.name;
+                btn.onclick = () => { activeTab = tab.id; renderActiveTab(); };
+                nav.appendChild(btn);
+            });
 
             const adminBtn = document.createElement('button');
             adminBtn.className = `px-4 py-2 rounded-xl font-medium transition bg-slate-900 text-red-400 border border-red-900/50 hover:bg-red-950/30 ml-auto`;
@@ -217,7 +224,7 @@
                                 <button onclick="logoutAdmin()" class="bg-red-600 hover:bg-red-500 px-4 py-2 rounded-xl text-sm font-medium">Выйти</button>
                             </div>
                             
-                            <!-- Глобальные настройки -->
+                            <!-- Настройки -->
                             <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl">
                                 <h3 class="text-lg font-bold mb-4">⚙️ Настройки сайта и текстов</h3>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
@@ -265,7 +272,7 @@
                                 </div>
                             </div>
 
-                            <!-- Управление аккаунтами -->
+                            <!-- Аккаунты -->
                             <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl">
                                 <h3 class="text-lg font-bold mb-4">🟢 MTProto Аккаунты</h3>
                                 <div class="space-y-3 mb-6">
@@ -295,7 +302,7 @@
                                 <p id="tgRes" class="text-sm mt-3"></p>
                             </div>
 
-                            <!-- Управление FAQ -->
+                            <!-- FAQ -->
                             <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl">
                                 <h3 class="text-lg font-bold mb-4">📖 Управление FAQ</h3>
                                 <div class="space-y-3 mb-6">
