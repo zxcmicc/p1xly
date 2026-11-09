@@ -75,13 +75,11 @@
             <div class="nav-tabs" id="nav-tabs-container"></div>
         </div>
 
-        <!-- Каталог -->
         <div id="section-catalog" class="tab-section">
             <h3 style="margin-bottom: 10px; color: #8b949e;">Доступные модули:</h3>
             <div class="grid-container" id="bots-container">Загрузка...</div>
         </div>
 
-        <!-- Отправка -->
         <div id="section-sender" class="tab-section" style="display: none;">
             <div class="card-box">
                 <h3 style="margin-bottom: 15px; text-align: center;">🤖 Отправка сообщений</h3>
@@ -103,13 +101,11 @@
             </div>
         </div>
 
-        <!-- База скамеров -->
         <div id="section-scammers" class="tab-section" style="display: none;">
             <h3 style="margin-bottom: 10px; color: #ef4444;">🚨 Черный список (Скамеры)</h3>
             <div class="grid-container" id="scammers-container">Загрузка базы...</div>
         </div>
 
-        <!-- О владельце -->
         <div id="section-owner" class="tab-section" style="display: none;">
             <div class="card-box" style="text-align: center;">
                 <h3 style="margin-bottom: 10px; color: #fff;">👤 О владельце</h3>
@@ -118,7 +114,6 @@
             </div>
         </div>
 
-        <!-- Подписка -->
         <div id="section-sub" class="tab-section" style="display: none;">
             <div class="card-box" style="text-align: center;">
                 <h3>Активация подписки</h3>
@@ -128,7 +123,7 @@
             </div>
         </div>
 
-        <!-- ВСТРОЕННАЯ АДМИНКА -->
+        <!-- АДМИНКА НА САЙТЕ -->
         <div id="section-admin" class="tab-section" style="display: none;">
             <div class="card-box">
                 <h3 style="color: #ef4444; margin-bottom: 15px;">⚡ Встроенная админ-панель</h3>
@@ -139,7 +134,14 @@
                 </div>
 
                 <div id="admin-content-box" style="display: none;">
-                    <h4 style="color: #60a5fa; margin-top: 10px;">📱 Добавить MTProto Аккаунт</h4>
+                    <h4 style="color: #60a5fa; margin-top: 10px;">🎁 Создать промокод</h4>
+                    <input type="text" id="promo-code-input" placeholder="Код (например: VIP2026)">
+                    <input type="number" id="promo-days-input" placeholder="Дней подписки (например: 7)">
+                    <input type="number" id="promo-uses-input" placeholder="Количество активаций (например: 50)">
+                    <button class="btn-main" onclick="createPromo()">Создать промокод</button>
+                    <p id="admin-promo-status" style="font-size: 13px; margin-top: 5px;"></p>
+
+                    <h4 style="color: #60a5fa; margin-top: 20px;">📱 Добавить MTProto Аккаунт</h4>
                     <div id="auth-step-1">
                         <input type="text" id="phone-input" placeholder="Номер телефона (+998...)">
                         <button class="btn-main" onclick="sendPhoneCode()">Запросить код</button>
@@ -233,6 +235,37 @@
             }
         }
 
+        async function createPromo() {
+            let code = document.getElementById('promo-code-input').value.trim();
+            let days = document.getElementById('promo-days-input').value;
+            let uses = document.getElementById('promo-uses-input').value;
+            let status = document.getElementById('admin-promo-status');
+
+            if (!code || !days || !uses) {
+                status.style.color = '#ef4444';
+                status.innerText = 'Заполни все поля!';
+                return;
+            }
+
+            let res = await fetch('/api/admin/promocodes', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ code, days, uses })
+            });
+            let data = await res.json();
+
+            if (data.success) {
+                status.style.color = '#238636';
+                status.innerText = 'Промокод успешно создан!';
+                document.getElementById('promo-code-input').value = '';
+                document.getElementById('promo-days-input').value = '';
+                document.getElementById('promo-uses-input').value = '';
+            } else {
+                status.style.color = '#ef4444';
+                status.innerText = 'Ошибка при создании.';
+            }
+        }
+
         async function loadData() {
             try {
                 let res = await fetch('/api/data');
@@ -249,10 +282,8 @@
                 (data.tabs || []).forEach((tab, index) => {
                     navContainer.innerHTML += `<button id="btn-tab-${tab.id}" class="tab-btn ${index === 0 ? 'active' : ''}" onclick="switchSection('${tab.id}')">${tab.name}</button>`;
                 });
-                // Добавляем вкладку админки в конец
                 navContainer.innerHTML += `<button id="btn-tab-admin" class="tab-btn admin-tab-btn" onclick="switchSection('admin')">⚙️ Админка</button>`;
 
-                // Боты
                 let botsContainer = document.getElementById('bots-container');
                 botsContainer.innerHTML = '';
                 if(data.bots && data.bots.length > 0) {
@@ -271,7 +302,6 @@
                     botsContainer.innerHTML = '<p style="color:#8b949e">Каталог пуст.</p>';
                 }
 
-                // Скамеры
                 let scamContainer = document.getElementById('scammers-container');
                 scamContainer.innerHTML = '';
                 if(data.scammers && data.scammers.length > 0) {
@@ -290,7 +320,6 @@
                     scamContainer.innerHTML = '<p style="color:#8b949e">База чиста, скамеров нет.</p>';
                 }
 
-                // Ссылки
                 let linksContainer = document.getElementById('links-container');
                 linksContainer.innerHTML = '';
                 if(data.links) {
@@ -443,7 +472,7 @@
 
             let res = await fetch('/api/tg/send', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-`Type`': 'application/json' },
                 body: JSON.stringify({ userId, accountId, recipient, message })
             });
             let data = await res.json();
