@@ -41,6 +41,10 @@ async function initDb() {
         await pool.query(`CREATE TABLE IF NOT EXISTS tabs (id TEXT PRIMARY KEY, name TEXT, title TEXT, is_enabled INTEGER DEFAULT 1);`);
         await pool.query(`CREATE TABLE IF NOT EXISTS scammers (id SERIAL PRIMARY KEY, username TEXT, reason TEXT, proof TEXT);`);
         await pool.query(`CREATE TABLE IF NOT EXISTS accounts (id SERIAL PRIMARY KEY, name TEXT, session TEXT, is_alive INTEGER DEFAULT 1);`);
+        
+        // Жесткая гарантия наличия колонки is_alive, чтобы база не падала
+        await pool.query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS is_alive INTEGER DEFAULT 1;`);
+        
         await pool.query(`CREATE TABLE IF NOT EXISTS faq (id SERIAL PRIMARY KEY, question TEXT, answer TEXT);`);
 
         await pool.query(`INSERT INTO settings (key, value) VALUES ('bio', 'для покупки промокода @zxc_micc') ON CONFLICT (key) DO NOTHING;`);
@@ -70,6 +74,7 @@ async function initDb() {
             await pool.query(`INSERT INTO faq (question, answer) SELECT $1, $2 WHERE NOT EXISTS (SELECT 1 FROM faq WHERE question = $1);`, f);
         }
 
+        console.log('БД успешно инициализирована!');
     } catch (e) {
         console.error('Ошибка инициализации БД:', e);
     }
@@ -108,7 +113,7 @@ app.get('/api/data', async (req, res) => {
 
         const stats = {
             botsCount: botsRes.rows.length,
-            accountsCount: accountsRes.rows.filter(a => a.is_alive).length,
+            accountsCount: accountsRes.rows.filter(a => a.is_alive === 1).length,
             scammersCount: scammersRes.rows.length
         };
 
@@ -129,7 +134,6 @@ app.get('/api/data', async (req, res) => {
 
 app.post('/api/check-sub', async (req, res) => {
     const { userId } = req.body;
-    logActivity(userId, req, 'Проверка подписки');
     try {
         const subRes = await pool.query(`SELECT expires_at FROM subscriptions WHERE user_id = $1`, [userId]);
         const row = subRes.rows[0];
@@ -176,7 +180,7 @@ app.post('/api/tg/send', async (req, res) => {
         }
         const accRes = await pool.query(`SELECT * FROM accounts WHERE id = $1 AND is_alive = 1`, [accountId]);
         const account = accRes.rows[0];
-        if (!account) return res.status(400).json({ success: false, message: 'Аккаунт мертв or не найден!' });
+        if (!account) return res.status(400).json({ success: false, message: 'Аккаунт мертв или не найден!' });
 
         const client = new TelegramClient(new StringSession(account.session), API_ID, API_HASH, { connectionRetries: 3 });
         await client.connect();
@@ -202,7 +206,7 @@ app.post('/api/login', (req, res) => {
 
 app.post('/api/logout', (req, res) => req.session.destroy(() => res.json({ success: true })));
 
-// АДМИНСКИЕ РУЧКИ
+// АДМИНСКИЕ МАРШРУТЫ
 app.post('/api/admin/settings', isAuth, async (req, res) => {
     const { key, value } = req.body;
     await pool.query(`INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2`, [key, value]);
