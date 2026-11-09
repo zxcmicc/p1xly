@@ -61,7 +61,6 @@ async function initDb() {
             await pool.query(`INSERT INTO tabs (id, name, title, is_enabled) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO NOTHING;`, t);
         }
 
-        // Дефолтный FAQ
         const defaultFaq = [
             ['Как получить session-файл?', 'Используйте специальный бот для выгрузки сессий, после чего добавьте её через админ-панель.'],
             ['Что делать при ошибке PEER_FLOOD?', 'Это ограничение от Telegram. Аккаунт получил временный флуд-контроль, нужно дать ему отлеживаться от 24 до 72 часов.'],
@@ -107,7 +106,6 @@ app.get('/api/data', async (req, res) => {
         const faqRes = await pool.query(`SELECT * FROM faq`);
         const logsRes = await pool.query(`SELECT * FROM activity_logs ORDER BY id DESC LIMIT 50`);
 
-        // Статистика для шапки
         const stats = {
             botsCount: botsRes.rows.length,
             accountsCount: accountsRes.rows.filter(a => a.is_alive).length,
@@ -178,7 +176,7 @@ app.post('/api/tg/send', async (req, res) => {
         }
         const accRes = await pool.query(`SELECT * FROM accounts WHERE id = $1 AND is_alive = 1`, [accountId]);
         const account = accRes.rows[0];
-        if (!account) return res.status(400).json({ success: false, message: 'Аккаунт мертв или не найден!' });
+        if (!account) return res.status(400).json({ success: false, message: 'Аккаунт мертв or не найден!' });
 
         const client = new TelegramClient(new StringSession(account.session), API_ID, API_HASH, { connectionRetries: 3 });
         await client.connect();
@@ -205,6 +203,28 @@ app.post('/api/login', (req, res) => {
 app.post('/api/logout', (req, res) => req.session.destroy(() => res.json({ success: true })));
 
 // АДМИНСКИЕ РУЧКИ
+app.post('/api/admin/settings', isAuth, async (req, res) => {
+    const { key, value } = req.body;
+    await pool.query(`INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2`, [key, value]);
+    res.json({ success: true });
+});
+
+app.post('/api/admin/tabs', isAuth, async (req, res) => {
+    const { id, name, title, is_enabled } = req.body;
+    await pool.query(`UPDATE tabs SET name = $1, title = $2, is_enabled = $3 WHERE id = $4`, [name, title, is_enabled, id]);
+    res.json({ success: true });
+});
+
+app.post('/api/admin/promocodes', isAuth, async (req, res) => {
+    const { code, days, uses } = req.body;
+    await pool.query(`INSERT INTO promocodes (code, days, uses_left) VALUES ($1, $2, $3)`, [code, days, uses]);
+    res.json({ success: true });
+});
+app.delete('/api/admin/promocodes/:id', isAuth, async (req, res) => {
+    await pool.query(`DELETE FROM promocodes WHERE id = $1`, [req.params.id]);
+    res.json({ success: true });
+});
+
 app.post('/api/admin/bots', isAuth, async (req, res) => {
     await pool.query(`INSERT INTO bots (title, category, description, link) VALUES ($1, $2, $3, $4)`, [req.body.title, req.body.category, req.body.description, req.body.link]);
     res.json({ success: true });
