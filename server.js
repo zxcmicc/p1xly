@@ -31,26 +31,27 @@ db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS links (id INTEGER PRIMARY KEY AUTOINCREMENT, category TEXT, title TEXT, url TEXT)`);
     db.run(`CREATE TABLE IF NOT EXISTS promocodes (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT, days INTEGER, uses_left INTEGER)`);
     db.run(`CREATE TABLE IF NOT EXISTS subscriptions (user_id TEXT PRIMARY KEY, expires_at TEXT)`);
-    db.run(`CREATE TABLE IF NOT EXISTS activity_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT, action TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)`);
+    db.run(`CREATE TABLE IF NOT EXISTS activity_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT, ip TEXT, device TEXT, action TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)`);
     db.run(`CREATE TABLE IF NOT EXISTS bots (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, category TEXT, description TEXT, link TEXT)`);
-    db.run(`CREATE TABLE IF NOT EXISTS tabs (id TEXT PRIMARY KEY, name TEXT, title TEXT, sub_title TEXT, is_enabled INTEGER DEFAULT 1)`);
+    db.run(`CREATE TABLE IF NOT EXISTS tabs (id TEXT PRIMARY KEY, name TEXT, title TEXT, is_enabled INTEGER DEFAULT 1)`);
     db.run(`CREATE TABLE IF NOT EXISTS scammers (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, reason TEXT, proof TEXT)`);
     db.run(`CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, session TEXT)`);
 
     db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('bio', 'для покупки промокода @zxc_micc')`);
     db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('app_title', 'P1xly Dashboard')`);
     db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('launcher_title', '🚀 P1xly System')`);
+    db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('launcher_desc', 'Центр управления автоматизацией и сервисами')`);
     db.run(`INSERT OR IGNORE INTO promocodes (code, days, uses_left) VALUES ('BRO2026', 7, 10)`);
 
     const defaultTabs = [
-        ['catalog', 'Каталог', 'Доступные модули', 'Выберите бота или утилиту'],
-        ['sender', 'Отправка (MTProto)', 'Мульти-аккаунт отправка', 'Отправляй сообщения по промокоду'],
-        ['scammers', 'База скамеров', 'Черный список / Скамеры', 'Проверка пользователей'],
-        ['owner', 'О владельце', 'Информация о владельце', 'Обо мне и мои контакты'],
-        ['sub', 'Подписка', 'Активация подписки', 'Введи промокод для разблокировки']
+        ['catalog', 'Каталог', 'Доступные модули', 1],
+        ['sender', 'Отправка (MTProto)', 'Мульти-аккаунт отправка', 1],
+        ['scammers', 'База скамеров', 'Черный список / Скамеры', 1],
+        ['owner', 'О владельце', 'Информация о владельце', 1],
+        ['sub', 'Подписка', 'Активация подписки', 1]
     ];
     defaultTabs.forEach(t => {
-        db.run(`INSERT OR IGNORE INTO tabs (id, name, title, sub_title) VALUES (?, ?, ?, ?)`, t);
+        db.run(`INSERT OR IGNORE INTO tabs (id, name, title, is_enabled) VALUES (?, ?, ?, ?)`, t);
     });
 });
 
@@ -58,6 +59,13 @@ const isAuth = (req, res, next) => {
     if (req.session.isAdmin) return next();
     res.status(401).json({ error: 'Необходима авторизация' });
 };
+
+// Функция записи логов
+function logActivity(userId, req, action) {
+    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    const device = req.headers['user-agent'] || 'Unknown Device';
+    db.run(`INSERT INTO activity_logs (user_id, ip, device, action) VALUES (?, ?, ?, ?)`, [userId || 'guest', ip, device, action]);
+}
 
 app.get('/ping', (req, res) => res.status(200).send('Alive'));
 
@@ -70,18 +78,24 @@ app.get('/api/data', (req, res) => {
         let settings = {};
         if (settingsRows) settingsRows.forEach(r => settings[r.key] = r.value);
 
-        db.all(`SELECT * FROM tabs WHERE is_enabled = 1`, (err, tabs) => {
+        db.all(`SELECT * FROM tabs`, (err, tabs) => {
             db.all(`SELECT * FROM links`, (err, links) => {
                 db.all(`SELECT * FROM bots`, (err, bots) => {
                     db.all(`SELECT * FROM scammers`, (err, scammers) => {
                         db.all(`SELECT id, name FROM accounts`, (err, accounts) => {
-                            res.json({
-                                settings: settings,
-                                tabs: tabs || [],
-                                links: links || [],
-                                bots: bots || [],
-                                scammers: scammers || [],
-                                accounts: accounts || []
+                            db.all(`SELECT * FROM promocodes`, (err, promocodes) => {
+                                db.all(`SELECT * FROM activity_logs ORDER BY id DESC LIMIT 50`, (err, logs) => {
+                                    res.json({
+                                        settings,
+                                        tabs: tabs || [],
+                                        links: links || [],
+                                        bots: bots || [],
+                                        scammers: scammers || [],
+                                        accounts: accounts || [],
+                                        promocodes: promocodes || [],
+                                        logs: logs || []
+                                    });
+                                });
                             });
                         });
                     });
@@ -93,6 +107,8 @@ app.get('/api/data', (req, res) => {
 
 app.post('/api/check-sub', (req, res) => {
     const { userId } = req.body;
+    logActivity(userId, req, 'Зашел на сайт / проверка сессии');
+
     db.get(`SELECT expires_at FROM subscriptions WHERE user_id = ?`, [userId], (err, row) => {
         const active = row && new Date(row.expires_at) > new Date();
         db.all(`SELECT id, name FROM accounts`, (err, accounts) => {
@@ -113,6 +129,7 @@ app.post('/api/activate-promo', (req, res) => {
 
             db.run(`INSERT OR REPLACE INTO subscriptions (user_id, expires_at) VALUES (?, ?)`, [userId, currentExpiry.toISOString()], () => {
                 db.run(`UPDATE promocodes SET uses_left = uses_left - 1 WHERE id = ?`, [promo.id], () => {
+                    logActivity(userId, req, `Активировал промокод: ${code}`);
                     res.json({ success: true, message: `Подписка активирована до ${currentExpiry.toLocaleDateString()}` });
                 });
             });
@@ -135,7 +152,7 @@ app.post('/api/tg/send', async (req, res) => {
                 const client = new TelegramClient(new StringSession(account.session), API_ID, API_HASH, { connectionRetries: 3 });
                 await client.connect();
                 await client.sendMessage(recipient, { message });
-                db.run(`INSERT INTO activity_logs (user_id, action) VALUES (?, ?)`, [userId, `Отправил сообщение через ${account.name}`]);
+                logActivity(userId, req, `Отправил сообщение через ${account.name} пользователю ${recipient}`);
                 res.json({ success: true, message: `Успешно отправлено с аккаунта: ${account.name}` });
             } catch (e) {
                 res.status(400).json({ success: false, message: 'Telegram API Error: ' + e.message });
@@ -148,8 +165,10 @@ app.post('/api/login', (req, res) => {
     const { password } = req.body;
     if (bcrypt.compareSync(password, ADMIN_HASH)) {
         req.session.isAdmin = true;
+        logActivity('ADMIN', req, 'Успешный вход в админ-панель');
         res.json({ success: true });
     } else {
+        logActivity('ANONYMOUS', req, 'Неудачная попытка входа в админку (неверный пароль)');
         res.status(400).json({ error: 'Неверный пароль' });
     }
 });
@@ -159,11 +178,23 @@ app.post('/api/logout', (req, res) => {
 });
 
 // Админские ручки
+app.post('/api/admin/settings', isAuth, (req, res) => {
+    const { key, value } = req.body;
+    db.run(`INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)`, [key, value], () => res.json({ success: true }));
+});
+
+app.post('/api/admin/tabs', isAuth, (req, res) => {
+    const { id, name, title, is_enabled } = req.body;
+    db.run(`UPDATE tabs SET name = ?, title = ?, is_enabled = ? WHERE id = ?`, [name, title, is_enabled, id], () => res.json({ success: true }));
+});
+
 app.post('/api/admin/promocodes', isAuth, (req, res) => {
     const { code, days, uses } = req.body;
-    db.run(`INSERT INTO promocodes (code, days, uses_left) VALUES (?, ?, ?)`, [code, days, uses], () => {
-        res.json({ success: true });
-    });
+    db.run(`INSERT INTO promocodes (code, days, uses_left) VALUES (?, ?, ?)`, [code, days, uses], () => res.json({ success: true }));
+});
+
+app.delete('/api/admin/promocodes/:id', isAuth, (req, res) => {
+    db.run(`DELETE FROM promocodes WHERE id = ?`, [req.params.id], () => res.json({ success: true }));
 });
 
 app.post('/api/admin/auth/send-code', isAuth, async (req, res) => {
@@ -235,6 +266,14 @@ app.post('/api/admin/scammers', isAuth, (req, res) => {
 
 app.delete('/api/admin/scammers/:id', isAuth, (req, res) => {
     db.run(`DELETE FROM scammers WHERE id = ?`, [req.params.id], () => res.json({ success: true }));
+});
+
+app.post('/api/admin/links', isAuth, (req, res) => {
+    db.run(`INSERT INTO links (category, title, url) VALUES (?, ?, ?)`, [req.body.category, req.body.title, req.body.url], () => res.json({ success: true }));
+});
+
+app.delete('/api/admin/links/:id', isAuth, (req, res) => {
+    db.run(`DELETE FROM links WHERE id = ?`, [req.params.id], () => res.json({ success: true }));
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
