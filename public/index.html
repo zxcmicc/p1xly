@@ -7,27 +7,27 @@
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen relative pb-12">
-    <!-- Toast контейнер -->
+    <!-- Toast контейнер для уведомлений -->
     <div id="toast-container" class="fixed bottom-5 right-5 z-50 space-y-2"></div>
 
     <div class="max-w-6xl mx-auto p-6">
         <!-- Шапка со статистикой -->
-        <header class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-900 border border-slate-800 p-6 rounded-3xl">
+        <header class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-xl">
             <div>
-                <h1 class="text-2xl font-black bg-gradient-to-r from-indigo-400 to-emerald-400 bg-clip-text text-transparent">P1XLY SYSTEM</h1>
+                <h1 id="app-header-title" class="text-2xl font-black bg-gradient-to-r from-indigo-400 to-emerald-400 bg-clip-text text-transparent">P1XLY SYSTEM</h1>
                 <p class="text-xs text-slate-400 mt-1">Панель управления сервисами и автоматизацией</p>
             </div>
-            <div id="stats-box" class="flex gap-4 text-xs font-medium">
+            <div id="stats-box" class="flex flex-wrap gap-3 text-xs font-medium">
                 <div class="bg-slate-950 border border-slate-800 px-4 py-2 rounded-2xl">🤖 Ботов: <span id="stat-bots" class="text-indigo-400 font-bold">0</span></div>
                 <div class="bg-slate-950 border border-slate-800 px-4 py-2 rounded-2xl">🟢 Аккаунтов: <span id="stat-accs" class="text-emerald-400 font-bold">0</span></div>
                 <div class="bg-slate-950 border border-slate-800 px-4 py-2 rounded-2xl">🚨 Скамеров: <span id="stat-scam" class="text-red-400 font-bold">0</span></div>
             </div>
         </header>
 
-        <!-- Навигация -->
+        <!-- Динамическое меню вкладок -->
         <nav id="nav-tabs" class="flex flex-wrap gap-3 mb-8 border-b border-slate-800 pb-4"></nav>
 
-        <!-- Контент -->
+        <!-- Контент страниц -->
         <main id="main-content"></main>
     </div>
 
@@ -36,6 +36,7 @@
         let currentUserId = localStorage.getItem('p1xly_user_id') || 'user_' + Math.random().toString(36).substring(2, 9);
         localStorage.setItem('p1xly_user_id', currentUserId);
         let activeTab = 'catalog';
+        let pendingSessionId = '';
 
         function showToast(message, type = 'success') {
             const container = document.getElementById('toast-container');
@@ -51,11 +52,20 @@
         }
 
         async function loadData() {
-            const res = await fetch('/api/data');
-            appData = await res.json();
-            updateStats();
-            renderNav();
-            renderActiveTab();
+            try {
+                const res = await fetch('/api/data');
+                appData = await res.json();
+                
+                if (appData.settings) {
+                    if (appData.settings.app_title) document.getElementById('app-header-title').innerText = appData.settings.app_title;
+                }
+                
+                updateStats();
+                renderNav();
+                renderActiveTab();
+            } catch (e) {
+                console.error(e);
+            }
         }
 
         function updateStats() {
@@ -68,6 +78,7 @@
         function renderNav() {
             const nav = document.getElementById('nav-tabs');
             nav.innerHTML = '';
+            
             if (appData.tabs) {
                 appData.tabs.forEach(tab => {
                     if (!tab.is_enabled && !localStorage.getItem('isAdmin')) return;
@@ -78,6 +89,8 @@
                     nav.appendChild(btn);
                 });
             }
+
+            // Кнопка админки
             const adminBtn = document.createElement('button');
             adminBtn.className = `px-4 py-2 rounded-xl font-medium transition bg-slate-900 text-red-400 border border-red-900/50 hover:bg-red-950/30 ml-auto`;
             adminBtn.innerText = '⚙️ Админка';
@@ -91,12 +104,12 @@
             
             if (activeTab === 'catalog') {
                 main.innerHTML = `
-                    <h2 class="text-2xl font-bold mb-6">Каталог ботов</h2>
+                    <h2 class="text-2xl font-bold mb-6">Каталог модулей и ботов</h2>
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         ${(appData.bots || []).map(b => `
                             <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex flex-col justify-between">
                                 <div>
-                                    <span class="text-xs px-2.5 py-1 bg-indigo-500/10 text-indigo-400 rounded-lg">${b.category}</span>
+                                    <span class="text-xs px-2.5 py-1 bg-indigo-500/10 text-indigo-400 rounded-lg">${(b.category || '').toUpperCase()}</span>
                                     <h3 class="text-lg font-bold mt-3">${b.title}</h3>
                                     <p class="text-sm text-slate-400 mt-1">${b.description}</p>
                                 </div>
@@ -115,8 +128,9 @@
                 if (!subCheck.active) {
                     main.innerHTML = `
                         <div class="max-w-md mx-auto bg-slate-900 border border-slate-800 p-8 rounded-3xl text-center">
-                            <h2 class="text-2xl font-bold text-red-400">Требуется подписка</h2>
-                            <p class="text-slate-400 mt-2">Активируйте промокод во вкладке «Подписка» для работы со спаммером.</p>
+                            <h2 class="text-2xl font-bold text-red-400 mb-2">🔒 Доступ заблокирован</h2>
+                            <p class="text-slate-400 text-sm mb-6">Для использования мульти-аккаунт отправки требуется активная подписка.</p>
+                            <button onclick="activeTab='sub'; renderActiveTab();" class="w-full bg-indigo-600 hover:bg-indigo-500 py-3 rounded-xl font-bold transition">Активировать промокод</button>
                         </div>
                     `;
                     return;
@@ -124,37 +138,37 @@
 
                 main.innerHTML = `
                     <div class="max-w-xl mx-auto bg-slate-900 border border-slate-800 p-8 rounded-3xl">
-                        <h2 class="text-xl font-bold mb-6">Мульти-аккаунт отправка</h2>
+                        <h2 class="text-xl font-bold mb-6">🤖 Мульти-аккаунт отправка</h2>
                         <div class="space-y-4">
                             <div>
-                                <label class="text-sm text-slate-400">Живой аккаунт:</label>
-                                <select id="accId" class="w-full mt-1 bg-slate-950 border border-slate-800 p-3 rounded-xl">
+                                <label class="text-xs text-slate-400 block mb-1">Активный аккаунт:</label>
+                                <select id="accId" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl">
                                     ${(subCheck.accounts || []).map(a => `<option value="${a.id}">${a.name}</option>`).join('')}
                                 </select>
                             </div>
                             <div>
-                                <label class="text-sm text-slate-400">Получатель (@username):</label>
-                                <input type="text" id="recipient" class="w-full mt-1 bg-slate-950 border border-slate-800 p-3 rounded-xl" placeholder="@username">
+                                <label class="text-xs text-slate-400 block mb-1">Получатель (@username):</label>
+                                <input type="text" id="recipient" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl" placeholder="@username">
                             </div>
                             <div>
-                                <label class="text-sm text-slate-400">Текст:</label>
-                                <textarea id="msgText" class="w-full mt-1 bg-slate-950 border border-slate-800 p-3 rounded-xl" placeholder="Текст сообщения..."></textarea>
+                                <label class="text-xs text-slate-400 block mb-1">Текст сообщения:</label>
+                                <textarea id="msgText" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl" placeholder="Текст сообщения..."></textarea>
                             </div>
-                            <button onclick="sendMessage()" class="w-full bg-emerald-600 hover:bg-emerald-500 py-3 rounded-xl font-bold transition">Отправить</button>
+                            <button onclick="sendMessage()" class="w-full bg-emerald-600 hover:bg-emerald-500 py-3 rounded-xl font-bold transition">Отправить сообщение</button>
                         </div>
                     </div>
                 `;
             } else if (activeTab === 'scammers') {
                 main.innerHTML = `
-                    <h2 class="text-2xl font-bold mb-6">🚨 База Скамеров</h2>
+                    <h2 class="text-2xl font-bold mb-6 text-red-400">🚨 Черный список (Скамеры)</h2>
                     <div class="space-y-3">
                         ${(appData.scammers || []).map(s => `
                             <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex justify-between items-center">
                                 <div>
-                                    <span class="font-bold text-red-400">${s.username}</span>
-                                    <p class="text-sm text-slate-400">${s.reason}</p>
+                                    <span class="font-bold text-red-400 text-lg">${s.username}</span>
+                                    <p class="text-sm text-slate-400 mt-1"><b>Причина:</b> ${s.reason}</p>
                                 </div>
-                                <a href="${s.proof}" target="_blank" class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded-xl">Пруфы</a>
+                                ${s.proof ? `<a href="${s.proof}" target="_blank" class="text-xs bg-red-950 text-red-400 border border-red-900/50 hover:bg-red-900 px-4 py-2.5 rounded-xl font-medium">Смотреть пруфы</a>` : ''}
                             </div>
                         `).join('')}
                     </div>
@@ -165,8 +179,8 @@
                     <div class="space-y-4">
                         ${(appData.faq || []).map(f => `
                             <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-                                <h3 class="font-bold text-indigo-400">${f.question}</h3>
-                                <p class="text-sm text-slate-300 mt-2">${f.answer}</p>
+                                <h3 class="font-bold text-indigo-400 text-base">${f.question}</h3>
+                                <p class="text-sm text-slate-300 mt-2 leading-relaxed">${f.answer}</p>
                             </div>
                         `).join('')}
                     </div>
@@ -174,15 +188,15 @@
             } else if (activeTab === 'owner') {
                 main.innerHTML = `
                     <div class="max-w-md mx-auto bg-slate-900 border border-slate-800 p-8 rounded-3xl text-center">
-                        <h2 class="text-xl font-bold mb-4">О владельце</h2>
-                        <p class="text-slate-300">${appData.settings?.bio || 'Информация не указана'}</p>
+                        <h2 class="text-xl font-bold mb-4">👤 О владельце</h2>
+                        <p class="text-slate-300 whitespace-pre-wrap">${appData.settings?.bio || 'Информация не указана'}</p>
                     </div>
                 `;
             } else if (activeTab === 'sub') {
                 main.innerHTML = `
                     <div class="max-w-md mx-auto bg-slate-900 border border-slate-800 p-8 rounded-3xl">
-                        <h2 class="text-xl font-bold mb-4">Активация подписки</h2>
-                        <input type="text" id="promoCode" placeholder="Введите промокод" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl mb-4">
+                        <h2 class="text-xl font-bold mb-4 text-center">🎁 Активация подписки</h2>
+                        <input type="text" id="promoCode" placeholder="Введите промокод" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl mb-4 text-center">
                         <button onclick="activatePromo()" class="w-full bg-indigo-600 hover:bg-indigo-500 py-3 rounded-xl font-bold transition">Активировать</button>
                     </div>
                 `;
@@ -192,27 +206,27 @@
                     main.innerHTML = `
                         <div class="max-w-sm mx-auto bg-slate-900 border border-slate-800 p-8 rounded-3xl text-center">
                             <h2 class="text-xl font-bold mb-4">Вход в админку</h2>
-                            <input type="password" id="adminPass" placeholder="Пароль" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl mb-4">
+                            <input type="password" id="adminPass" placeholder="Пароль администратора" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl mb-4 text-center">
                             <button onclick="loginAdmin()" class="w-full bg-indigo-600 hover:bg-indigo-500 py-3 rounded-xl font-bold transition">Войти</button>
                         </div>
                     `;
                 } else {
                     main.innerHTML = `
                         <div class="space-y-8">
-                            <div class="flex justify-between items-center">
-                                <h2 class="text-2xl font-bold">Панель управления</h2>
-                                <button onclick="logoutAdmin()" class="bg-red-600 hover:bg-red-500 px-4 py-2 rounded-xl text-sm">Выйти</button>
+                            <div class="flex justify-between items-center bg-slate-900 border border-slate-800 p-6 rounded-3xl">
+                                <h2 class="text-xl font-bold">⚡ Панель управления</h2>
+                                <button onclick="logoutAdmin()" class="bg-red-600 hover:bg-red-500 px-4 py-2 rounded-xl text-sm font-medium">Выйти</button>
                             </div>
                             
                             <!-- Управление аккаунтами -->
                             <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl">
-                                <h3 class="text-lg font-bold mb-4">🟢 Управление аккаунтами (Живой / Мертвый)</h3>
+                                <h3 class="text-lg font-bold mb-4">🟢 MTProto Аккаунты (Статус / Удаление)</h3>
                                 <div class="space-y-3 mb-6">
                                     ${(appData.accounts || []).map(a => `
                                         <div class="flex justify-between items-center bg-slate-950 p-4 rounded-xl border border-slate-800">
                                             <div>
                                                 <span class="font-bold ${a.is_alive ? 'text-emerald-400' : 'text-red-400'}">${a.name}</span>
-                                                <span class="text-xs ml-2 text-slate-500">(${a.is_alive ? 'Активен' : 'Мертв / В бане'})</span>
+                                                <span class="text-xs ml-2 text-slate-500">(${a.is_alive ? 'Активен' : 'Мертв'})</span>
                                             </div>
                                             <div class="space-x-2">
                                                 <button onclick="toggleAcc(${a.id})" class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded-lg">Сменить статус</button>
@@ -221,15 +235,15 @@
                                         </div>
                                     `).join('')}
                                 </div>
-                                <h4 class="text-md font-bold mb-2">Добавить MTProto аккаунт</h4>
+                                <h4 class="text-sm font-bold mb-2 text-slate-400">Добавить новый аккаунт</h4>
                                 <div id="tgStep1" class="space-y-3">
-                                    <input type="text" id="tgPhone" placeholder="+998..." class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl">
-                                    <button onclick="tgSendCode()" class="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-xl">Запросить код</button>
+                                    <input type="text" id="tgPhone" placeholder="Номер телефона (+998...)" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl">
+                                    <button onclick="tgSendCode()" class="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-xl font-medium">Запросить код в Telegram</button>
                                 </div>
                                 <div id="tgStep2" class="space-y-3 hidden mt-4">
-                                    <input type="text" id="tgCode" placeholder="Код из Телеграма" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl">
-                                    <input type="password" id="tgPassword" placeholder="Облачный пароль 2FA" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl">
-                                    <button onclick="tgVerifyCode()" class="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-xl">Подтвердить</button>
+                                    <input type="text" id="tgCode" placeholder="Код из Telegram" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl">
+                                    <input type="password" id="tgPassword" placeholder="Облачный пароль 2FA (если есть)" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl">
+                                    <button onclick="tgVerifyCode()" class="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-xl font-medium">Подтвердить и авторизовать</button>
                                 </div>
                                 <p id="tgRes" class="text-sm mt-3"></p>
                             </div>
@@ -239,8 +253,8 @@
                                 <h3 class="text-lg font-bold mb-4">📖 Добавить вопрос в FAQ</h3>
                                 <div class="space-y-3">
                                     <input type="text" id="faqQ" placeholder="Вопрос" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl">
-                                    <textarea id="faqA" placeholder="Ответ" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl"></textarea>
-                                    <button onclick="addFaq()" class="bg-indigo-600 hover:bg-indigo-500 px-6 py-2 rounded-xl">Добавить гайд</button>
+                                    <textarea id="faqA" placeholder="Подробный ответ" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl"></textarea>
+                                    <button onclick="addFaq()" class="bg-indigo-600 hover:bg-indigo-500 px-6 py-2.5 rounded-xl font-bold">Добавить гайд</button>
                                 </div>
                             </div>
 
@@ -253,7 +267,18 @@
                                     <input type="text" id="botDesc" placeholder="Описание" class="bg-slate-950 border border-slate-800 p-3 rounded-xl">
                                     <input type="text" id="botLink" placeholder="Ссылка (https://t.me/...)" class="bg-slate-950 border border-slate-800 p-3 rounded-xl">
                                 </div>
-                                <button onclick="addBot()" class="bg-indigo-600 hover:bg-indigo-500 px-6 py-2 rounded-xl">Добавить бота</button>
+                                <button onclick="addBot()" class="bg-indigo-600 hover:bg-indigo-500 px-6 py-2.5 rounded-xl font-bold">Добавить бота</button>
+                            </div>
+
+                            <!-- Управление скамерами -->
+                            <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl">
+                                <h3 class="text-lg font-bold mb-4 text-red-400">🚨 Добавить скамера в базу</h3>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                                    <input type="text" id="scamUser" placeholder="@username" class="bg-slate-950 border border-slate-800 p-3 rounded-xl">
+                                    <input type="text" id="scamReason" placeholder="Причина скама" class="bg-slate-950 border border-slate-800 p-3 rounded-xl">
+                                    <input type="text" id="scamProof" placeholder="Ссылка на пруфы" class="bg-slate-950 border border-slate-800 p-3 rounded-xl">
+                                </div>
+                                <button onclick="addScammer()" class="bg-red-600 hover:bg-red-500 px-6 py-2.5 rounded-xl font-bold">Внести скамера</button>
                             </div>
                         </div>
                     `;
@@ -290,17 +315,16 @@
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ password: document.getElementById('adminPass').value })
             }).then(r => r.json());
-            if (res.success) { showToast('Успешный вход!'); loadData(); }
+            if (res.success) { showToast('Успешный вход в админку!'); loadData(); }
             else showToast('Неверный пароль', 'error');
         }
 
         async function logoutAdmin() {
             await fetch('/api/logout', { method: 'POST' });
             loadData();
-            showToast('Вышли из админки');
+            showToast('Выход из админки выполнен');
         }
 
-        let pendingSessionId = '';
         async function tgSendCode() {
             const res = await fetch('/api/admin/auth/send-code', {
                 method: 'POST',
@@ -367,6 +391,20 @@
             });
             loadData();
             showToast('Гайд добавлен в FAQ!');
+        }
+
+        async function addScammer() {
+            await fetch('/api/admin/scammers', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    username: document.getElementById('scamUser').value,
+                    reason: document.getElementById('scamReason').value,
+                    proof: document.getElementById('scamProof').value
+                })
+            });
+            loadData();
+            showToast('Скамер успешно внесен в базу!');
         }
 
         loadData();
