@@ -12,7 +12,6 @@
         .item-row { display: flex; justify-content: space-between; align-items: center; background: #161b22; padding: 10px; margin-bottom: 8px; border-radius: 6px; border: 1px solid #21293d; }
         .del-btn { background: #ef4444; width: auto; padding: 5px 10px; margin: 0; }
         h3 { margin-top: 25px; border-bottom: 1px solid #21293d; padding-bottom: 6px; color: #60a5fa; }
-        .tab-edit-box { background: #161b22; border: 1px solid #21293d; padding: 12px; border-radius: 8px; margin-bottom: 12px; }
     </style>
 </head>
 <body>
@@ -26,48 +25,37 @@
 
     <div id="admin-panel" style="display:none;">
 
-        <h3>⚙️ Заголовки сайта</h3>
-        <input type="text" id="cfg-app_title" placeholder="Название в шапке">
-        <input type="text" id="cfg-launcher_title" placeholder="Заголовок лаунчера">
-        <button onclick="saveGlobalSettings()">Сохранить настройки</button>
+        <!-- Подключение аккаунтов по номеру -->
+        <h3>📱 Добавить MTProto Аккаунт</h3>
+        <div id="auth-step-1">
+            <input type="text" id="phone-input" placeholder="Номер телефона (+998...)">
+            <button onclick="sendPhoneCode()">Запросить код</button>
+        </div>
+        
+        <div id="auth-step-2" style="display:none;">
+            <input type="text" id="code-input" placeholder="Код из Telegram">
+            <input type="password" id="password-2fa" placeholder="Пароль 2FA (если есть)">
+            <button onclick="verifyPhoneCode()">Подтвердить и войти</button>
+        </div>
+        <p id="auth-status" style="font-size: 13px; margin-top: 5px;"></p>
 
-        <h3>📁 Управление вкладками</h3>
-        <div id="tabs-editor-container"></div>
-
-        <h3>🚨 База скамеров (Черный список)</h3>
-        <input type="text" id="scam-user" placeholder="Username (@scamer)">
-        <input type="text" id="scam-reason" placeholder="Причина">
-        <input type="text" id="scam-proof" placeholder="Пруфы (ссылка)">
-        <button onclick="addScammer()">Добавить в базу</button>
-        <div id="admin-scammers"></div>
+        <h3>📋 Активные аккаунты в системе</h3>
+        <div id="admin-accounts"></div>
 
         <h3>🤖 Каталог Ботов</h3>
         <input type="text" id="bot-title" placeholder="Название бота">
         <input type="text" id="bot-cat" placeholder="Категория">
         <input type="text" id="bot-desc" placeholder="Описание">
-        <input type="text" id="bot-link" placeholder="Ссылка (https://t.me/...)">
+        <input type="text" id="bot-link" placeholder="Ссылка">
         <button onclick="addBot()">Добавить бота</button>
         <div id="admin-bots"></div>
-
-        <h3>👤 Био владельца</h3>
-        <textarea id="cfg-bio" rows="3"></textarea>
-        <button onclick="saveSetting('bio', document.getElementById('cfg-bio').value)">Сохранить Био</button>
-
-        <h3>🔗 Ссылки</h3>
-        <select id="cat-input">
-            <option value="bots">🤖 Бот</option>
-            <option value="channels">📢 Канал</option>
-            <option value="contacts">🔗 Связь</option>
-        </select>
-        <input type="text" id="title-input" placeholder="Название">
-        <input type="text" id="url-input" placeholder="Ссылка">
-        <button onclick="addLink()">Добавить ссылку</button>
-        <div id="admin-links"></div>
 
     </div>
 </div>
 
 <script>
+    let currentSessionId = null;
+
     function login() {
         fetch('/api/login', {
             method: 'POST',
@@ -84,33 +72,18 @@
 
     function loadAdminData() {
         fetch('/api/data').then(res => res.json()).then(data => {
-            const s = data.settings || {};
-            document.getElementById('cfg-app_title').value = s.app_title || '';
-            document.getElementById('cfg-launcher_title').value = s.launcher_title || '';
-            document.getElementById('cfg-bio').value = s.bio || '';
-
-            const tContainer = document.getElementById('tabs-editor-container');
-            tContainer.innerHTML = '';
-            (data.tabs || []).forEach(t => {
-                tContainer.innerHTML += `
-                    <div class="tab-edit-box">
-                        <b style="color: #60a5fa;">ID: ${t.id}</b>
-                        <input type="text" id="tab-name-${t.id}" value="${t.name}" placeholder="Имя вкладки">
-                        <input type="text" id="tab-title-${t.id}" value="${t.title}" placeholder="Заголовок">
-                        <button onclick="saveTab('${t.id}')">Обновить</button>
-                    </div>`;
-            });
-
-            const scamContainer = document.getElementById('admin-scammers');
-            scamContainer.innerHTML = '';
-            (data.scammers || []).forEach(sc => {
-                scamContainer.innerHTML += `
+            // Список аккаунтов
+            const accContainer = document.getElementById('admin-accounts');
+            accContainer.innerHTML = '';
+            (data.accounts || []).forEach(acc => {
+                accContainer.innerHTML += `
                     <div class="item-row">
-                        <span><b>${sc.username}</b> — ${sc.reason}</span>
-                        <button class="del-btn" onclick="deleteScammer(${sc.id})">Удалить</button>
+                        <span><b>${acc.name}</b></span>
+                        <button class="del-btn" onclick="deleteAccount(${acc.id})">Удалить</button>
                     </div>`;
             });
 
+            // Боты
             const bContainer = document.getElementById('admin-bots');
             bContainer.innerHTML = '';
             (data.bots || []).forEach(b => {
@@ -120,61 +93,63 @@
                         <button class="del-btn" onclick="deleteBot(${b.id})">Удалить</button>
                     </div>`;
             });
-
-            const lContainer = document.getElementById('admin-links');
-            lContainer.innerHTML = '';
-            (data.links || []).forEach(l => {
-                lContainer.innerHTML += `
-                    <div class="item-row">
-                        <span>[${l.category}] ${l.title}</span>
-                        <button class="del-btn" onclick="deleteLink(${l.id})">Удалить</button>
-                    </div>`;
-            });
         });
     }
 
-    function saveSetting(key, value) {
-        fetch('/api/admin/settings', {
+    async function sendPhoneCode() {
+        let phone = document.getElementById('phone-input').value.trim();
+        let status = document.getElementById('auth-status');
+        status.innerText = 'Отправка запроса в Telegram...';
+
+        let res = await fetch('/api/admin/auth/send-code', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ key, value })
-        }).then(() => alert('Сохранено!'));
+            body: JSON.stringify({ phone })
+        });
+        let data = await res.json();
+
+        if (data.success) {
+            currentSessionId = data.sessionId;
+            document.getElementById('auth-step-1').style.display = 'none';
+            document.getElementById('auth-step-2').style.display = 'block';
+            status.style.color = '#238636';
+            status.innerText = data.message;
+        } else {
+            status.style.color = '#ef4444';
+            status.innerText = data.message;
+        }
     }
 
-    function saveGlobalSettings() {
-        saveSetting('app_title', document.getElementById('cfg-app_title').value);
-        saveSetting('launcher_title', document.getElementById('cfg-launcher_title').value);
-    }
+    async function verifyPhoneCode() {
+        let code = document.getElementById('code-input').value.trim();
+        let password = document.getElementById('password-2fa').value.trim();
+        let status = document.getElementById('auth-status');
+        status.innerText = 'Авторизация...';
 
-    function saveTab(id) {
-        let name = document.getElementById(`tab-name-${id}`).value;
-        let title = document.getElementById(`tab-title-${id}`).value;
-        fetch('/api/admin/tabs', {
+        let res = await fetch('/api/admin/auth/verify-code', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ id, name, title, sub_title: '' })
-        }).then(() => alert('Вкладка обновлена!'));
-    }
+            body: JSON.stringify({ sessionId: currentSessionId, code, password })
+        });
+        let data = await res.json();
 
-    function addScammer() {
-        fetch('/api/admin/scammers', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                username: document.getElementById('scam-user').value,
-                reason: document.getElementById('scam-reason').value,
-                proof: document.getElementById('scam-proof').value
-            })
-        }).then(() => {
-            document.getElementById('scam-user').value = '';
-            document.getElementById('scam-reason').value = '';
-            document.getElementById('scam-proof').value = '';
+        if (data.success) {
+            status.style.color = '#238636';
+            status.innerText = data.message;
+            document.getElementById('auth-step-1').style.display = 'block';
+            document.getElementById('auth-step-2').style.display = 'none';
+            document.getElementById('phone-input').value = '';
+            document.getElementById('code-input').value = '';
+            document.getElementById('password-2fa').value = '';
             loadAdminData();
-        });
+        } else {
+            status.style.color = '#ef4444';
+            status.innerText = data.message;
+        }
     }
 
-    function deleteScammer(id) {
-        fetch('/api/admin/scammers/' + id, { method: 'DELETE' }).then(() => loadAdminData());
+    function deleteAccount(id) {
+        fetch('/api/admin/accounts/' + id, { method: 'DELETE' }).then(() => loadAdminData());
     }
 
     function addBot() {
@@ -192,22 +167,6 @@
 
     function deleteBot(id) {
         fetch('/api/admin/bots/' + id, { method: 'DELETE' }).then(() => loadAdminData());
-    }
-
-    function addLink() {
-        fetch('/api/admin/links', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                category: document.getElementById('cat-input').value,
-                title: document.getElementById('title-input').value,
-                url: document.getElementById('url-input').value
-            })
-        }).then(() => loadAdminData());
-    }
-
-    function deleteLink(id) {
-        fetch('/api/admin/links/' + id, { method: 'DELETE' }).then(() => loadAdminData());
     }
 </script>
 </body>
