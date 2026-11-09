@@ -3,279 +3,292 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P1xly SaaS Panel</title>
+    <title>P1xly SaaS</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        body { background: #0d1117; color: #c9d1d9; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
-        .container { width: 100%; max-width: 450px; background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 25px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
-        .tabs { display: flex; margin-bottom: 20px; border-bottom: 1px solid #30363d; }
-        .tab { flex: 1; text-align: center; padding: 10px; cursor: pointer; color: #8b949e; font-weight: 600; border-bottom: 2px solid transparent; }
-        .tab.active { color: #58a6ff; border-bottom-color: #58a6ff; }
-        .section { display: none; }
-        .section.active { display: block; }
-        input, select { width: 100%; padding: 12px; background: #0d1117; border: 1px solid #30363d; color: #fff; border-radius: 8px; margin-bottom: 12px; outline: none; }
-        input:focus, select:focus { border-color: #58a6ff; }
-        .action-btn { width: 100%; padding: 12px; background: #238636; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
-        .action-btn:hover { background: #2ea043; }
-        .link-item { display: block; padding: 10px; background: #21262d; border-radius: 6px; margin-bottom: 8px; color: #58a6ff; text-decoration: none; text-align: center; }
-        .link-item:hover { background: #30363d; }
-        .log-box { max-height: 150px; overflow-y: auto; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 8px; font-size: 11px; color: #8b949e; margin-top: 10px; text-align: left; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, -apple-system, sans-serif; }
+        body { background: #080b10; color: #e6edf3; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+
+        #launcher-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(8, 11, 16, 0.95); backdrop-filter: blur(10px);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 100; transition: opacity 0.3s ease;
+        }
+        .launcher-card {
+            background: #111622; border: 1px solid #21293d; border-radius: 16px;
+            padding: 30px; text-align: center; max-width: 400px; width: 90%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+        }
+        .launch-btn {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #fff;
+            border: none; padding: 14px 28px; font-size: 16px; font-weight: 700;
+            border-radius: 10px; cursor: pointer; margin-top: 20px; width: 100%;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .launch-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(37, 99, 235, 0.4); }
+
+        .app-container { width: 100%; max-width: 800px; display: none; opacity: 0; transition: opacity 0.4s ease; }
+        .app-container.visible { display: block; opacity: 1; }
+
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+        .nav-tabs { display: flex; gap: 6px; background: #111622; padding: 6px; border-radius: 12px; border: 1px solid #21293d; flex-wrap: wrap; }
+        .tab-btn {
+            background: transparent; border: none; color: #8b949e; padding: 8px 14px;
+            font-weight: 600; border-radius: 8px; cursor: pointer; transition: 0.2s; font-size: 13px;
+        }
+        .tab-btn.active, .tab-btn:hover { background: #1f293d; color: #58a6ff; }
+
+        .grid-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 15px; }
+        .bot-card, .scam-card {
+            background: #111622; border: 1px solid #21293d; border-radius: 12px; padding: 16px;
+            display: flex; flex-direction: column; justify-content: space-between; transition: 0.2s;
+        }
+        .bot-card:hover, .scam-card:hover { border-color: #ef4444; transform: translateY(-3px); }
+        .tag { display: inline-block; padding: 3px 8px; font-size: 11px; font-weight: bold; border-radius: 6px; margin-bottom: 10px; background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+        .tag-scam { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+
+        input, select { width: 100%; padding: 12px; background: #080b10; border: 1px solid #21293d; color: #fff; border-radius: 8px; margin-bottom: 12px; outline: none; box-sizing: border-box; }
+        .btn-main { background: #238636; color: #fff; border: none; padding: 10px; border-radius: 8px; font-weight: 600; cursor: pointer; width: 100%; text-decoration: none; text-align: center; display: block; }
+        .btn-main:hover { background: #2ea043; }
+
+        .card-box { background: #111622; border: 1px solid #21293d; border-radius: 12px; padding: 20px; }
+        .link-item { display: block; padding: 10px; background: #161b22; border-radius: 6px; margin-bottom: 8px; color: #58a6ff; text-decoration: none; border: 1px solid #21293d; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <!-- Навигация по вкладкам -->
-    <div class="tabs">
-        <div class="tab active" onclick="switchTab('home')">Главная</div>
-        <div class="tab" onclick="switchTab('bot')">Аккаунт</div>
-        <div class="tab" onclick="switchTab('admin')">Админка</div>
-    </div>
-
-    <!-- Вкладка: Главная -->
-    <div id="home-section" class="section active">
-        <h2 style="color: #fff; margin-bottom: 10px; text-align: center;">👋 UwU куда попало не жмякать...</h2>
-        <p id="bio-text" style="text-align: center; color: #8b949e; margin-bottom: 20px; font-size: 14px;"></p>
-        <div id="links-container"></div>
-    </div>
-
-    <!-- Вкладка: Панель бота (Саб / Промокод) -->
-    <div id="bot-section" class="section">
-        <!-- Блок ввода промокода (если подписки нет) -->
-        <div id="paywall-section" style="text-align: center;">
-            <h2 style="color: #fff; margin-bottom: 10px;">🔒 Доступ ограничен</h2>
-            <p style="color: #8b949e; font-size: 13px; margin-bottom: 15px;">Введите промокод для активации доступа:</p>
-            
-            <!-- Поле чистое, без подсказок внутри -->
-            <input type="text" id="promo-input" placeholder="Введите промокод" style="text-align: center;">
-            
-            <button class="action-btn" onclick="activatePromo()">Активировать</button>
-            <p id="promo-status" style="font-size: 13px; margin-top: 10px;"></p>
-        </div>
-
-        <!-- Сама панель отправки (появится после активации подписки) -->
-        <div id="control-panel" style="display: none; text-align: left;">
-            <h2 style="color: #fff; margin-bottom: 15px; text-align: center;">🤖 Мульти-аккаунт Панель</h2>
-            
-            <p style="font-size: 12px; color: #8b949e; margin-bottom: 5px;">Выбери аккаунт для отправки:</p>
-            <select id="account-select"></select>
-
-            <p style="font-size: 12px; color: #8b949e; margin-bottom: 5px;">Кому отправить (@username или ID):</p>
-            <input type="text" id="recipient-input" placeholder="@username">
-
-            <p style="font-size: 12px; color: #8b949e; margin-bottom: 5px;">Текст сообщения:</p>
-            <input type="text" id="chat-input" placeholder="Здарова, бро!">
-            
-            <button class="action-btn" onclick="sendTgMessage()">Отправить сообщение</button>
-            <p id="send-status" style="font-size: 13px; margin-top: 10px; text-align: center;"></p>
+    <div id="launcher-modal">
+        <div class="launcher-card">
+            <h1 id="lnc-title" style="margin-bottom: 8px;">🚀 P1xly System</h1>
+            <p id="lnc-desc" style="color: #8b949e; font-size: 14px;">Центр управления</p>
+            <button class="launch-btn" onclick="startApp()">Запустить панель</button>
         </div>
     </div>
 
-    <!-- Вкладка: Админка -->
-    <div id="admin-section" class="section">
-        <div id="admin-login-box">
-            <h2 style="color: #fff; margin-bottom: 15px; text-align: center;">🔐 Вход в админку</h2>
-            <input type="password" id="admin-pass" placeholder="Пароль администратора">
-            <button class="action-btn" onclick="adminLogin()">Войти</button>
-            <p id="login-status" style="font-size: 13px; margin-top: 10px; text-align: center;"></p>
+    <div class="app-container" id="main-app">
+        <div class="header">
+            <h2 id="app-header-title">P1xly Dashboard</h2>
+            <div class="nav-tabs" id="nav-tabs-container"></div>
         </div>
 
-        <div id="admin-panel-box" style="display: none;">
-            <h2 style="color: #fff; margin-bottom: 15px; text-align: center;">⚡ Управление</h2>
-            
-            <p style="font-size: 12px; color: #58a6ff; margin-bottom: 5px; font-weight: bold;">Создать новый промокод:</p>
-            <input type="text" id="new-code" placeholder="Код (например NEWYEAR)">
-            <input type="number" id="new-days" placeholder="Дней действия">
-            <input type="number" id="new-uses" placeholder="Количество активаций">
-            <button class="action-btn" onclick="createPromo()" style="margin-bottom: 15px;">Создать промокод</button>
+        <div id="section-catalog" class="tab-section">
+            <h3 id="head-catalog" style="margin-bottom: 10px; color: #8b949e;">Доступные модули:</h3>
+            <div class="grid-container" id="bots-container">Загрузка...</div>
+        </div>
 
-            <p style="font-size: 12px; color: #58a6ff; margin-bottom: 5px; font-weight: bold;">Логи активности (кто заходил / действия):</p>
-            <div id="logs-container" class="log-box">Загрузка логов...</div>
+        <div id="section-sender" class="tab-section" style="display: none;">
+            <div class="card-box">
+                <h3 id="head-sender" style="margin-bottom: 15px; text-align: center;">🤖 Отправка сообщений</h3>
+                
+                <div id="sender-paywall" style="text-align: center; padding: 20px;">
+                    <p style="color: #ef4444; font-weight: bold; margin-bottom: 10px;">🔒 Доступ заблокирован</p>
+                    <p style="color: #8b949e; font-size: 13px; margin-bottom: 15px;">Требуется подписка по промокоду.</p>
+                    <button class="btn-main" onclick="switchSection('sub')">Активировать</button>
+                </div>
 
-            <button class="action-btn" onclick="adminLogout()" style="background: #da3633; margin-top: 15px;">Выйти из админки</button>
+                <div id="sender-control" style="display: none;">
+                    <label style="font-size: 12px; color: #8b949e; display:block; margin-bottom: 5px;">Аккаунт:</label>
+                    <select id="account-select"></select>
+
+                    <label style="font-size: 12px; color: #8b949e; display:block; margin-bottom: 5px;">Получатель (@username):</label>
+                    <input type="text" id="recipient-input" placeholder="@username">
+
+                    <label style="font-size: 12px; color: #8b949e; display:block; margin-bottom: 5px;">Текст:</label>
+                    <input type="text" id="chat-input" placeholder="Привет!">
+                    
+                    <button class="btn-main" onclick="sendTgMessage()">Отправить</button>
+                    <p id="send-status" style="font-size: 13px; margin-top: 10px; text-align: center;"></p>
+                </div>
+            </div>
+        </div>
+
+        <div id="section-scammers" class="tab-section" style="display: none;">
+            <h3 id="head-scammers" style="margin-bottom: 10px; color: #ef4444;">🚨 Черный список (Скамеры)</h3>
+            <div class="grid-container" id="scammers-container">Загрузка базы...</div>
+        </div>
+
+        <div id="section-owner" class="tab-section" style="display: none;">
+            <div class="card-box" style="text-align: center;">
+                <h3 id="head-owner" style="margin-bottom: 10px; color: #fff;">👤 О владельце</h3>
+                <p id="bio-text" style="color: #8b949e; font-size: 14px; margin-bottom: 20px; white-space: pre-wrap;">Загрузка...</p>
+                <div id="links-container"></div>
+            </div>
+        </div>
+
+        <div id="section-sub" class="tab-section" style="display: none;">
+            <div class="card-box" style="text-align: center;">
+                <h3 id="head-sub">Активация подписки</h3>
+                <input type="text" id="promo-input" placeholder="Введите промокод" style="text-align: center; margin-top: 10px;">
+                <button class="btn-main" onclick="activatePromo()">Активировать</button>
+                <p id="promo-status" style="font-size: 13px; margin-top: 10px;"></p>
+            </div>
         </div>
     </div>
-</div>
 
-<script>
-    // Генерация уникального ID юзера для отслеживания сессии
-    let userId = localStorage.getItem('p1xly_user_id');
-    if (!userId) {
-        userId = 'user_' + Math.random().toString(36).substring(2, 11);
-        localStorage.setItem('p1xly_user_id', userId);
-    }
+    <script>
+        let userId = localStorage.getItem('p1xly_user_id');
+        if (!userId) {
+            userId = 'user_' + Math.random().toString(36).substring(2, 11);
+            localStorage.setItem('p1xly_user_id', userId);
+        }
 
-    function switchTab(tabName) {
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-
-        if (tabName === 'home') {
-            document.querySelectorAll('.tab')[0].classList.add('active');
-            document.getElementById('home-section').classList.add('active');
-            loadHomeData();
-        } else if (tabName === 'bot') {
-            document.querySelectorAll('.tab')[1].classList.add('active');
-            document.getElementById('bot-section').classList.add('active');
+        function startApp() {
+            document.getElementById('launcher-modal').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('launcher-modal').style.display = 'none';
+                document.getElementById('main-app').classList.add('visible');
+            }, 300);
+            loadData();
             checkSubscription();
-        } else if (tabName === 'admin') {
-            document.querySelectorAll('.tab')[2].classList.add('active');
-            document.getElementById('admin-section').classList.add('active');
         }
-    }
 
-    async function loadHomeData() {
-        let res = await fetch('/api/data');
-        let data = await res.json();
-        document.getElementById('bio-text').innerText = data.bio;
-        let container = document.getElementById('links-container');
-        container.innerHTML = '';
-        data.links.forEach(link => {
-            container.innerHTML += `<a href="${link.url}" target="_blank" class="link-item">${link.title}</a>`;
-        });
-    }
+        function switchSection(name) {
+            document.querySelectorAll('.tab-section').forEach(s => s.style.display = 'none');
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            
+            const targetSection = document.getElementById(`section-${name}`);
+            if(targetSection) targetSection.style.display = 'block';
+            
+            const targetBtn = document.getElementById(`btn-tab-${name}`);
+            if(targetBtn) targetBtn.classList.add('active');
 
-    async function checkSubscription() {
-        let res = await fetch('/api/check-sub', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId })
-        });
-        let data = await res.json();
+            if (name === 'sender') checkSubscription();
+        }
 
-        if (data.active) {
-            document.getElementById('paywall-section').style.display = 'none';
-            document.getElementById('control-panel').style.display = 'block';
+        async function loadData() {
+            try {
+                let res = await fetch('/api/data');
+                let data = await res.json();
+                
+                if(data.settings) {
+                    if(data.settings.app_title) document.getElementById('app-header-title').innerText = data.settings.app_title;
+                    if(data.settings.launcher_title) document.getElementById('lnc-title').innerText = data.settings.launcher_title;
+                    if(data.settings.bio) document.getElementById('bio-text').innerText = data.settings.bio;
+                }
 
-            let select = document.getElementById('account-select');
-            select.innerHTML = '';
-            data.accounts.forEach(acc => {
-                select.innerHTML += `<option value="${acc.id}">${acc.name}</option>`;
+                let navContainer = document.getElementById('nav-tabs-container');
+                navContainer.innerHTML = '';
+                (data.tabs || []).forEach((tab, index) => {
+                    navContainer.innerHTML += `<button id="btn-tab-${tab.id}" class="tab-btn ${index === 0 ? 'active' : ''}" onclick="switchSection('${tab.id}')">${tab.name}</button>`;
+                    const headElem = document.getElementById(`head-${tab.id}`);
+                    if(headElem && tab.title) headElem.innerText = tab.title;
+                });
+
+                let botsContainer = document.getElementById('bots-container');
+                botsContainer.innerHTML = '';
+                if(data.bots && data.bots.length > 0) {
+                    data.bots.forEach(bot => {
+                        botsContainer.innerHTML += `
+                            <div class="bot-card">
+                                <div>
+                                    <span class="tag">${bot.category.toUpperCase()}</span>
+                                    <h4>${bot.title}</h4>
+                                    <p style="font-size: 12px; color: #8b949e; margin-top: 5px;">${bot.description}</p>
+                                </div>
+                                <a href="${bot.link}" target="_blank" class="btn-main" style="margin-top: 15px;">Открыть</a>
+                            </div>`;
+                    });
+                } else {
+                    botsContainer.innerHTML = '<p style="color:#8b949e">Каталог пуст.</p>';
+                }
+
+                let scamContainer = document.getElementById('scammers-container');
+                scamContainer.innerHTML = '';
+                if(data.scammers && data.scammers.length > 0) {
+                    data.scammers.forEach(sc => {
+                        scamContainer.innerHTML += `
+                            <div class="scam-card">
+                                <div>
+                                    <span class="tag tag-scam">СКАМЕР</span>
+                                    <h4 style="color: #ef4444;">${sc.username}</h4>
+                                    <p style="font-size: 12px; color: #8b949e; margin-top: 5px;"><b>Причина:</b> ${sc.reason}</p>
+                                </div>
+                                ${sc.proof ? `<a href="${sc.proof}" target="_blank" class="btn-main" style="margin-top: 15px; background: #dc2626;">Смотреть пруфы</a>` : ''}
+                            </div>`;
+                    });
+                } else {
+                    scamContainer.innerHTML = '<p style="color:#8b949e">База чиста, скамеров нет.</p>';
+                }
+
+                let linksContainer = document.getElementById('links-container');
+                linksContainer.innerHTML = '';
+                if(data.links) {
+                    data.links.forEach(link => {
+                        linksContainer.innerHTML += `<a href="${link.url}" target="_blank" class="link-item">${link.title} (${link.category})</a>`;
+                    });
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        async function checkSubscription() {
+            try {
+                let res = await fetch('/api/check-sub', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId })
+                });
+                let data = await res.json();
+
+                if (data.active) {
+                    document.getElementById('sender-paywall').style.display = 'none';
+                    document.getElementById('sender-control').style.display = 'block';
+
+                    let select = document.getElementById('account-select');
+                    select.innerHTML = '';
+                    data.accounts.forEach(acc => {
+                        select.innerHTML += `<option value="${acc.id}">${acc.name}</option>`;
+                    });
+                } else {
+                    document.getElementById('sender-paywall').style.display = 'block';
+                    document.getElementById('sender-control').style.display = 'none';
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        async function activatePromo() {
+            let code = document.getElementById('promo-input').value.trim();
+            let status = document.getElementById('promo-status');
+            status.innerText = '';
+
+            let res = await fetch('/api/activate-promo', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, code })
             });
-        } else {
-            document.getElementById('paywall-section').style.display = 'block';
-            document.getElementById('control-panel').style.display = 'none';
-        }
-    }
-
-    async function activatePromo() {
-        let code = document.getElementById('promo-input').value.trim();
-        let status = document.getElementById('promo-status');
-        status.innerText = '';
-
-        if (!code) {
-            status.style.color = '#ef4444';
-            status.innerText = 'Введите промокод!';
-            return;
-        }
-
-        let res = await fetch('/api/activate-promo', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId, code })
-        });
-        let data = await res.json();
-
-        if (data.success) {
-            status.style.color = '#238636';
-            status.innerText = data.message;
-            setTimeout(checkSubscription, 1000);
-        } else {
-            status.style.color = '#ef4444';
-            status.innerText = data.message;
-        }
-    }
-
-    async function sendTgMessage() {
-        let accountId = document.getElementById('account-select').value;
-        let recipient = document.getElementById('recipient-input').value.trim();
-        let message = document.getElementById('chat-input').value.trim();
-        let status = document.getElementById('send-status');
-        status.innerText = '';
-
-        if (!recipient || !message) {
-            status.style.color = '#ef4444';
-            status.innerText = 'Заполни получателя и текст!';
-            return;
-        }
-
-        let res = await fetch('/api/tg/send', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId, accountId, recipient, message })
-        });
-        let data = await res.json();
-        
-        if (data.success) {
-            status.style.color = '#238636';
-            status.innerText = data.message;
-            document.getElementById('chat-input').value = '';
-        } else {
-            status.style.color = '#ef4444';
-            status.innerText = data.message;
-        }
-    }
-
-    async function adminLogin() {
-        let password = document.getElementById('admin-pass').value;
-        let status = document.getElementById('login-status');
-        let res = await fetch('/api/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ password })
-        });
-        let data = await res.json();
-        if (data.success) {
-            document.getElementById('admin-login-box').style.display = 'none';
-            document.getElementById('admin-panel-box').style.display = 'block';
-            loadAdminData();
-        } else {
-            status.style.color = '#ef4444';
-            status.innerText = data.error;
-        }
-    }
-
-    async function adminLogout() {
-        await fetch('/api/logout', { method: 'POST' });
-        document.getElementById('admin-login-box').style.display = 'block';
-        document.getElementById('admin-panel-box').style.display = 'none';
-        document.getElementById('admin-pass').value = '';
-    }
-
-    async function createPromo() {
-        let code = document.getElementById('new-code').value.trim();
-        let days = document.getElementById('new-days').value;
-        let uses = document.getElementById('new-uses').value;
-
-        let res = await fetch('/api/admin/promocodes', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ code, days, uses })
-        });
-        let data = await res.json();
-        if (data.success) {
-            alert('Промокод успешно создан!');
-            document.getElementById('new-code').value = '';
-            document.getElementById('new-days').value = '';
-            document.getElementById('new-uses').value = '';
-            loadAdminData();
-        } else {
-            alert(data.message);
-        }
-    }
-
-    async function loadAdminData() {
-        let res = await fetch('/api/admin/data');
-        if (res.ok) {
             let data = await res.json();
-            let logsContainer = document.getElementById('logs-container');
-            logsContainer.innerHTML = '';
-            data.logs.forEach(log => {
-                logsContainer.innerHTML += `[${log.timestamp}] Юзер: ${log.user_id} -> ${log.action}<br>`;
-            });
-        }
-    }
 
-    loadHomeData();
-</script>
+            if (data.success) {
+                status.style.color = '#238636';
+                status.innerText = data.message;
+                setTimeout(checkSubscription, 1000);
+            } else {
+                status.style.color = '#ef4444';
+                status.innerText = data.message;
+            }
+        }
+
+        async function sendTgMessage() {
+            let accountId = document.getElementById('account-select').value;
+            let recipient = document.getElementById('recipient-input').value.trim();
+            let message = document.getElementById('chat-input').value.trim();
+            let status = document.getElementById('send-status');
+
+            let res = await fetch('/api/tg/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, accountId, recipient, message })
+            });
+            let data = await res.json();
+            
+            if (data.success) {
+                status.style.color = '#238636';
+                status.innerText = data.message;
+                document.getElementById('chat-input').value = '';
+            } else {
+                status.style.color = '#ef4444';
+                status.innerText = data.message;
+            }
+        }
+    </script>
 </body>
 </html>
