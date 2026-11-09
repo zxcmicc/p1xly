@@ -37,6 +37,8 @@
             font-weight: 600; border-radius: 8px; cursor: pointer; transition: 0.2s; font-size: 13px;
         }
         .tab-btn.active, .tab-btn:hover { background: #1f293d; color: #58a6ff; }
+        .admin-tab-btn { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+        .admin-tab-btn:hover { background: rgba(239, 68, 68, 0.3); color: #f87171; }
 
         .grid-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 15px; }
         .bot-card, .scam-card {
@@ -53,6 +55,8 @@
 
         .card-box { background: #111622; border: 1px solid #21293d; border-radius: 12px; padding: 20px; }
         .link-item { display: block; padding: 10px; background: #161b22; border-radius: 6px; margin-bottom: 8px; color: #58a6ff; text-decoration: none; border: 1px solid #21293d; }
+        .item-row { display: flex; justify-content: space-between; align-items: center; background: #161b22; padding: 10px; margin-bottom: 8px; border-radius: 6px; border: 1px solid #21293d; }
+        .del-btn { background: #ef4444; width: auto; padding: 5px 10px; margin: 0; border: none; border-radius: 4px; color: #fff; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -71,56 +75,98 @@
             <div class="nav-tabs" id="nav-tabs-container"></div>
         </div>
 
+        <!-- Каталог -->
         <div id="section-catalog" class="tab-section">
-            <h3 id="head-catalog" style="margin-bottom: 10px; color: #8b949e;">Доступные модули:</h3>
+            <h3 style="margin-bottom: 10px; color: #8b949e;">Доступные модули:</h3>
             <div class="grid-container" id="bots-container">Загрузка...</div>
         </div>
 
+        <!-- Отправка -->
         <div id="section-sender" class="tab-section" style="display: none;">
             <div class="card-box">
-                <h3 id="head-sender" style="margin-bottom: 15px; text-align: center;">🤖 Отправка сообщений</h3>
-                
+                <h3 style="margin-bottom: 15px; text-align: center;">🤖 Отправка сообщений</h3>
                 <div id="sender-paywall" style="text-align: center; padding: 20px;">
                     <p style="color: #ef4444; font-weight: bold; margin-bottom: 10px;">🔒 Доступ заблокирован</p>
                     <p style="color: #8b949e; font-size: 13px; margin-bottom: 15px;">Требуется подписка по промокоду.</p>
                     <button class="btn-main" onclick="switchSection('sub')">Активировать</button>
                 </div>
-
                 <div id="sender-control" style="display: none;">
                     <label style="font-size: 12px; color: #8b949e; display:block; margin-bottom: 5px;">Аккаунт:</label>
                     <select id="account-select"></select>
-
                     <label style="font-size: 12px; color: #8b949e; display:block; margin-bottom: 5px;">Получатель (@username):</label>
                     <input type="text" id="recipient-input" placeholder="@username">
-
                     <label style="font-size: 12px; color: #8b949e; display:block; margin-bottom: 5px;">Текст:</label>
                     <input type="text" id="chat-input" placeholder="Привет!">
-                    
                     <button class="btn-main" onclick="sendTgMessage()">Отправить</button>
                     <p id="send-status" style="font-size: 13px; margin-top: 10px; text-align: center;"></p>
                 </div>
             </div>
         </div>
 
+        <!-- База скамеров -->
         <div id="section-scammers" class="tab-section" style="display: none;">
-            <h3 id="head-scammers" style="margin-bottom: 10px; color: #ef4444;">🚨 Черный список (Скамеры)</h3>
+            <h3 style="margin-bottom: 10px; color: #ef4444;">🚨 Черный список (Скамеры)</h3>
             <div class="grid-container" id="scammers-container">Загрузка базы...</div>
         </div>
 
+        <!-- О владельце -->
         <div id="section-owner" class="tab-section" style="display: none;">
             <div class="card-box" style="text-align: center;">
-                <h3 id="head-owner" style="margin-bottom: 10px; color: #fff;">👤 О владельце</h3>
+                <h3 style="margin-bottom: 10px; color: #fff;">👤 О владельце</h3>
                 <p id="bio-text" style="color: #8b949e; font-size: 14px; margin-bottom: 20px; white-space: pre-wrap;">Загрузка...</p>
                 <div id="links-container"></div>
             </div>
         </div>
 
+        <!-- Подписка -->
         <div id="section-sub" class="tab-section" style="display: none;">
             <div class="card-box" style="text-align: center;">
-                <h3 id="head-sub">Активация подписки</h3>
+                <h3>Активация подписки</h3>
                 <input type="text" id="promo-input" placeholder="Введите промокод" style="text-align: center; margin-top: 10px;">
                 <button class="btn-main" onclick="activatePromo()">Активировать</button>
                 <p id="promo-status" style="font-size: 13px; margin-top: 10px;"></p>
+            </div>
+        </div>
+
+        <!-- ВСТРОЕННАЯ АДМИНКА -->
+        <div id="section-admin" class="tab-section" style="display: none;">
+            <div class="card-box">
+                <h3 style="color: #ef4444; margin-bottom: 15px;">⚡ Встроенная админ-панель</h3>
+                
+                <div id="admin-login-box">
+                    <input type="password" id="admin-pass-input" placeholder="Пароль администратора">
+                    <button class="btn-main" onclick="adminLogin()">Войти в админку</button>
+                </div>
+
+                <div id="admin-content-box" style="display: none;">
+                    <h4 style="color: #60a5fa; margin-top: 10px;">📱 Добавить MTProto Аккаунт</h4>
+                    <div id="auth-step-1">
+                        <input type="text" id="phone-input" placeholder="Номер телефона (+998...)">
+                        <button class="btn-main" onclick="sendPhoneCode()">Запросить код</button>
+                    </div>
+                    <div id="auth-step-2" style="display:none;">
+                        <input type="text" id="code-input" placeholder="Код из Telegram">
+                        <input type="password" id="password-2fa" placeholder="Пароль 2FA (если есть)">
+                        <button class="btn-main" onclick="verifyPhoneCode()">Подтвердить и войти</button>
+                    </div>
+                    <p id="auth-status" style="font-size: 13px; margin-top: 5px;"></p>
+
+                    <h4 style="color: #60a5fa; margin-top: 20px;">📋 Активные аккаунты</h4>
+                    <div id="admin-accounts"></div>
+
+                    <h4 style="color: #60a5fa; margin-top: 20px;">🤖 Добавить бота в каталог</h4>
+                    <input type="text" id="bot-title" placeholder="Название бота">
+                    <input type="text" id="bot-cat" placeholder="Категория">
+                    <input type="text" id="bot-desc" placeholder="Описание">
+                    <input type="text" id="bot-link" placeholder="Ссылка (https://t.me/...)">
+                    <button class="btn-main" onclick="addBot()">Добавить бота</button>
+
+                    <h4 style="color: #60a5fa; margin-top: 20px;">🚨 Добавить скамера</h4>
+                    <input type="text" id="scam-user" placeholder="Username (@scamer)">
+                    <input type="text" id="scam-reason" placeholder="Причина скама">
+                    <input type="text" id="scam-proof" placeholder="Ссылка на пруфы">
+                    <button class="btn-main" onclick="addScammer()">Внести в базу</button>
+                </div>
             </div>
         </div>
     </div>
@@ -132,6 +178,8 @@
             localStorage.setItem('p1xly_user_id', userId);
         }
 
+        let currentSessionId = null;
+
         function startApp() {
             document.getElementById('launcher-modal').style.opacity = '0';
             setTimeout(() => {
@@ -139,6 +187,7 @@
                 document.getElementById('main-app').classList.add('visible');
             }, 300);
             loadData();
+            checkAuthStatus();
             checkSubscription();
         }
 
@@ -153,6 +202,35 @@
             if(targetBtn) targetBtn.classList.add('active');
 
             if (name === 'sender') checkSubscription();
+            if (name === 'admin') checkAuthStatus();
+        }
+
+        async function checkAuthStatus() {
+            let res = await fetch('/api/check-auth');
+            let data = await res.json();
+            if (data.isAdmin) {
+                document.getElementById('admin-login-box').style.display = 'none';
+                document.getElementById('admin-content-box').style.display = 'block';
+                loadAdminData();
+            } else {
+                document.getElementById('admin-login-box').style.display = 'block';
+                document.getElementById('admin-content-box').style.display = 'none';
+            }
+        }
+
+        async function adminLogin() {
+            let password = document.getElementById('admin-pass-input').value;
+            let res = await fetch('/api/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ password })
+            });
+            let data = await res.json();
+            if (data.success) {
+                checkAuthStatus();
+            } else {
+                alert('Неверный пароль администратора!');
+            }
         }
 
         async function loadData() {
@@ -170,10 +248,11 @@
                 navContainer.innerHTML = '';
                 (data.tabs || []).forEach((tab, index) => {
                     navContainer.innerHTML += `<button id="btn-tab-${tab.id}" class="tab-btn ${index === 0 ? 'active' : ''}" onclick="switchSection('${tab.id}')">${tab.name}</button>`;
-                    const headElem = document.getElementById(`head-${tab.id}`);
-                    if(headElem && tab.title) headElem.innerText = tab.title;
                 });
+                // Добавляем вкладку админки в конец
+                navContainer.innerHTML += `<button id="btn-tab-admin" class="tab-btn admin-tab-btn" onclick="switchSection('admin')">⚙️ Админка</button>`;
 
+                // Боты
                 let botsContainer = document.getElementById('bots-container');
                 botsContainer.innerHTML = '';
                 if(data.bots && data.bots.length > 0) {
@@ -192,6 +271,7 @@
                     botsContainer.innerHTML = '<p style="color:#8b949e">Каталог пуст.</p>';
                 }
 
+                // Скамеры
                 let scamContainer = document.getElementById('scammers-container');
                 scamContainer.innerHTML = '';
                 if(data.scammers && data.scammers.length > 0) {
@@ -210,6 +290,7 @@
                     scamContainer.innerHTML = '<p style="color:#8b949e">База чиста, скамеров нет.</p>';
                 }
 
+                // Ссылки
                 let linksContainer = document.getElementById('links-container');
                 linksContainer.innerHTML = '';
                 if(data.links) {
@@ -220,51 +301,138 @@
             } catch(e) { console.error(e); }
         }
 
+        async function loadAdminData() {
+            let res = await fetch('/api/data');
+            let data = await res.json();
+
+            let accContainer = document.getElementById('admin-accounts');
+            accContainer.innerHTML = '';
+            (data.accounts || []).forEach(acc => {
+                accContainer.innerHTML += `
+                    <div class="item-row">
+                        <span><b>${acc.name}</b></span>
+                        <button class="del-btn" onclick="deleteAccount(${acc.id})">Удалить</button>
+                    </div>`;
+            });
+        }
+
+        async function sendPhoneCode() {
+            let phone = document.getElementById('phone-input').value.trim();
+            let status = document.getElementById('auth-status');
+            status.innerText = 'Отправка кода в Telegram...';
+
+            let res = await fetch('/api/admin/auth/send-code', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ phone })
+            });
+            let data = await res.json();
+            if (data.success) {
+                currentSessionId = data.sessionId;
+                document.getElementById('auth-step-1').style.display = 'none';
+                document.getElementById('auth-step-2').style.display = 'block';
+                status.style.color = '#238636';
+                status.innerText = data.message;
+            } else {
+                status.style.color = '#ef4444';
+                status.innerText = data.message;
+            }
+        }
+
+        async function verifyPhoneCode() {
+            let code = document.getElementById('code-input').value.trim();
+            let password = document.getElementById('password-2fa').value.trim();
+            let status = document.getElementById('auth-status');
+            status.innerText = 'Авторизация...';
+
+            let res = await fetch('/api/admin/auth/verify-code', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ sessionId: currentSessionId, code, password })
+            });
+            let data = await res.json();
+            if (data.success) {
+                status.style.color = '#238636';
+                status.innerText = data.message;
+                document.getElementById('auth-step-1').style.display = 'block';
+                document.getElementById('auth-step-2').style.display = 'none';
+                loadAdminData();
+                loadData();
+            } else {
+                status.style.color = '#ef4444';
+                status.innerText = data.message;
+            }
+        }
+
+        async function deleteAccount(id) {
+            await fetch('/api/admin/accounts/' + id, { method: 'DELETE' });
+            loadAdminData();
+            loadData();
+        }
+
+        async function addBot() {
+            let title = document.getElementById('bot-title').value;
+            let category = document.getElementById('bot-cat').value;
+            let description = document.getElementById('bot-desc').value;
+            let link = document.getElementById('bot-link').value;
+
+            await fetch('/api/admin/bots', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ title, category, description, link })
+            });
+            alert('Бот добавлен!');
+            loadData();
+        }
+
+        async function addScammer() {
+            let username = document.getElementById('scam-user').value;
+            let reason = document.getElementById('scam-reason').value;
+            let proof = document.getElementById('scam-proof').value;
+
+            await fetch('/api/admin/scammers', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ username, reason, proof })
+            });
+            alert('Скамер добавлен в базу!');
+            loadData();
+        }
+
         async function checkSubscription() {
-            try {
-                let res = await fetch('/api/check-sub', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId })
+            let res = await fetch('/api/check-sub', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId })
+            });
+            let data = await res.json();
+
+            if (data.active) {
+                document.getElementById('sender-paywall').style.display = 'none';
+                document.getElementById('sender-control').style.display = 'block';
+                let select = document.getElementById('account-select');
+                select.innerHTML = '';
+                data.accounts.forEach(acc => {
+                    select.innerHTML += `<option value="${acc.id}">${acc.name}</option>`;
                 });
-                let data = await res.json();
-
-                if (data.active) {
-                    document.getElementById('sender-paywall').style.display = 'none';
-                    document.getElementById('sender-control').style.display = 'block';
-
-                    let select = document.getElementById('account-select');
-                    select.innerHTML = '';
-                    data.accounts.forEach(acc => {
-                        select.innerHTML += `<option value="${acc.id}">${acc.name}</option>`;
-                    });
-                } else {
-                    document.getElementById('sender-paywall').style.display = 'block';
-                    document.getElementById('sender-control').style.display = 'none';
-                }
-            } catch(e) { console.error(e); }
+            } else {
+                document.getElementById('sender-paywall').style.display = 'block';
+                document.getElementById('sender-control').style.display = 'none';
+            }
         }
 
         async function activatePromo() {
             let code = document.getElementById('promo-input').value.trim();
             let status = document.getElementById('promo-status');
-            status.innerText = '';
-
             let res = await fetch('/api/activate-promo', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId, code })
             });
             let data = await res.json();
-
-            if (data.success) {
-                status.style.color = '#238636';
-                status.innerText = data.message;
-                setTimeout(checkSubscription, 1000);
-            } else {
-                status.style.color = '#ef4444';
-                status.innerText = data.message;
-            }
+            status.style.color = data.success ? '#238636' : '#ef4444';
+            status.innerText = data.message;
+            if (data.success) setTimeout(checkSubscription, 1000);
         }
 
         async function sendTgMessage() {
@@ -279,15 +447,9 @@
                 body: JSON.stringify({ userId, accountId, recipient, message })
             });
             let data = await res.json();
-            
-            if (data.success) {
-                status.style.color = '#238636';
-                status.innerText = data.message;
-                document.getElementById('chat-input').value = '';
-            } else {
-                status.style.color = '#ef4444';
-                status.innerText = data.message;
-            }
+            status.style.color = data.success ? '#238636' : '#ef4444';
+            status.innerText = data.message;
+            if (data.success) document.getElementById('chat-input').value = '';
         }
     </script>
 </body>
