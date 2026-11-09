@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen relative pb-12">
-    <!-- Toast контейнер для уведомлений -->
+    <!-- Toast контейнер -->
     <div id="toast-container" class="fixed bottom-5 right-5 z-50 space-y-2"></div>
 
     <div class="max-w-6xl mx-auto p-6">
@@ -56,8 +56,8 @@
                 const res = await fetch('/api/data');
                 appData = await res.json();
                 
-                if (appData.settings) {
-                    if (appData.settings.app_title) document.getElementById('app-header-title').innerText = appData.settings.app_title;
+                if (appData.settings && appData.settings.app_title) {
+                    document.getElementById('app-header-title').innerText = appData.settings.app_title;
                 }
                 
                 updateStats();
@@ -90,7 +90,6 @@
                 });
             }
 
-            // Кнопка админки
             const adminBtn = document.createElement('button');
             adminBtn.className = `px-4 py-2 rounded-xl font-medium transition bg-slate-900 text-red-400 border border-red-900/50 hover:bg-red-950/30 ml-auto`;
             adminBtn.innerText = '⚙️ Админка';
@@ -129,7 +128,7 @@
                     main.innerHTML = `
                         <div class="max-w-md mx-auto bg-slate-900 border border-slate-800 p-8 rounded-3xl text-center">
                             <h2 class="text-2xl font-bold text-red-400 mb-2">🔒 Доступ заблокирован</h2>
-                            <p class="text-slate-400 text-sm mb-6">Для использования мульти-аккаунт отправки требуется активная подписка.</p>
+                            <p class="text-slate-400 text-sm mb-6">Для отправки сообщений через мульти-аккаунты требуется подписка.</p>
                             <button onclick="activeTab='sub'; renderActiveTab();" class="w-full bg-indigo-600 hover:bg-indigo-500 py-3 rounded-xl font-bold transition">Активировать промокод</button>
                         </div>
                     `;
@@ -141,7 +140,7 @@
                         <h2 class="text-xl font-bold mb-6">🤖 Мульти-аккаунт отправка</h2>
                         <div class="space-y-4">
                             <div>
-                                <label class="text-xs text-slate-400 block mb-1">Активный аккаунт:</label>
+                                <label class="text-xs text-slate-400 block mb-1">Живой аккаунт:</label>
                                 <select id="accId" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl">
                                     ${(subCheck.accounts || []).map(a => `<option value="${a.id}">${a.name}</option>`).join('')}
                                 </select>
@@ -154,7 +153,7 @@
                                 <label class="text-xs text-slate-400 block mb-1">Текст сообщения:</label>
                                 <textarea id="msgText" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl" placeholder="Текст сообщения..."></textarea>
                             </div>
-                            <button onclick="sendMessage()" class="w-full bg-emerald-600 hover:bg-emerald-500 py-3 rounded-xl font-bold transition">Отправить сообщение</button>
+                            <button onclick="sendMessage()" class="w-full bg-emerald-600 hover:bg-emerald-500 py-3 rounded-xl font-bold transition">Отправить</button>
                         </div>
                     </div>
                 `;
@@ -214,13 +213,61 @@
                     main.innerHTML = `
                         <div class="space-y-8">
                             <div class="flex justify-between items-center bg-slate-900 border border-slate-800 p-6 rounded-3xl">
-                                <h2 class="text-xl font-bold">⚡ Панель управления</h2>
+                                <h2 class="text-xl font-bold">⚡ Панель полного контроля</h2>
                                 <button onclick="logoutAdmin()" class="bg-red-600 hover:bg-red-500 px-4 py-2 rounded-xl text-sm font-medium">Выйти</button>
                             </div>
                             
+                            <!-- Глобальные настройки -->
+                            <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl">
+                                <h3 class="text-lg font-bold mb-4">⚙️ Настройки сайта и текстов</h3>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                                    <input type="text" id="cfgAppTitle" value="${appData.settings?.app_title || ''}" placeholder="Название в шапке" class="bg-slate-950 border border-slate-800 p-3 rounded-xl">
+                                    <input type="text" id="cfgLncTitle" value="${appData.settings?.launcher_title || ''}" placeholder="Заголовок лаунчера" class="bg-slate-950 border border-slate-800 p-3 rounded-xl">
+                                </div>
+                                <textarea id="cfgBio" placeholder="Био владельца" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl mb-3">${appData.settings?.bio || ''}</textarea>
+                                <button onclick="saveSettings()" class="bg-indigo-600 hover:bg-indigo-500 px-6 py-2.5 rounded-xl font-bold">Сохранить настройки</button>
+                            </div>
+
+                            <!-- Управление вкладками -->
+                            <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl">
+                                <h3 class="text-lg font-bold mb-4">📁 Управление вкладками</h3>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    ${(appData.tabs || []).map(t => `
+                                        <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+                                            <div class="text-xs text-indigo-400 font-bold">ID: ${t.id}</div>
+                                            <input type="text" id="tName_${t.id}" value="${t.name}" class="w-full bg-slate-900 border border-slate-800 p-2 rounded-lg text-sm">
+                                            <select id="tEn_${t.id}" class="w-full bg-slate-900 border border-slate-800 p-2 rounded-lg text-sm">
+                                                <option value="1" ${t.is_enabled ? 'selected' : ''}>Включена</option>
+                                                <option value="0" ${!t.is_enabled ? 'selected' : ''}>Выключена</option>
+                                            </select>
+                                            <button onclick="saveTab('${t.id}')" class="w-full bg-slate-800 hover:bg-slate-700 py-1.5 rounded-lg text-xs font-medium">Обновить</button>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+
+                            <!-- Промокоды -->
+                            <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl">
+                                <h3 class="text-lg font-bold mb-4">🎁 Управление промокодами</h3>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                                    <input type="text" id="pCode" placeholder="Код (например: BRO)" class="bg-slate-950 border border-slate-800 p-3 rounded-xl">
+                                    <input type="number" id="pDays" placeholder="Дней подписки" class="bg-slate-950 border border-slate-800 p-3 rounded-xl">
+                                    <input type="number" id="pUses" placeholder="Лимит активаций" class="bg-slate-950 border border-slate-800 p-3 rounded-xl">
+                                </div>
+                                <button onclick="createPromo()" class="bg-indigo-600 hover:bg-indigo-500 px-6 py-2.5 rounded-xl font-bold mb-6">Создать промокод</button>
+                                <div class="space-y-2">
+                                    ${(appData.promocodes || []).map(p => `
+                                        <div class="flex justify-between items-center bg-slate-950 p-3 rounded-xl border border-slate-800 text-sm">
+                                            <span><b>${p.code}</b> (+${p.days} дн., лимит: ${p.uses_left})</span>
+                                            <button onclick="deletePromo(${p.id})" class="text-xs bg-red-950 text-red-400 px-3 py-1.5 rounded-lg">Удалить</button>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+
                             <!-- Управление аккаунтами -->
                             <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl">
-                                <h3 class="text-lg font-bold mb-4">🟢 MTProto Аккаунты (Статус / Удаление)</h3>
+                                <h3 class="text-lg font-bold mb-4">🟢 MTProto Аккаунты</h3>
                                 <div class="space-y-3 mb-6">
                                     ${(appData.accounts || []).map(a => `
                                         <div class="flex justify-between items-center bg-slate-950 p-4 rounded-xl border border-slate-800">
@@ -229,56 +276,94 @@
                                                 <span class="text-xs ml-2 text-slate-500">(${a.is_alive ? 'Активен' : 'Мертв'})</span>
                                             </div>
                                             <div class="space-x-2">
-                                                <button onclick="toggleAcc(${a.id})" class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded-lg">Сменить статус</button>
+                                                <button onclick="toggleAcc(${a.id})" class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded-lg">Статус</button>
                                                 <button onclick="deleteAcc(${a.id})" class="text-xs bg-red-950 text-red-400 hover:bg-red-900 px-3 py-2 rounded-lg">Удалить</button>
                                             </div>
                                         </div>
                                     `).join('')}
                                 </div>
-                                <h4 class="text-sm font-bold mb-2 text-slate-400">Добавить новый аккаунт</h4>
+                                <h4 class="text-sm font-bold mb-2 text-slate-400">Авторизовать новый аккаунт</h4>
                                 <div id="tgStep1" class="space-y-3">
                                     <input type="text" id="tgPhone" placeholder="Номер телефона (+998...)" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl">
-                                    <button onclick="tgSendCode()" class="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-xl font-medium">Запросить код в Telegram</button>
+                                    <button onclick="tgSendCode()" class="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-xl font-medium">Запросить код</button>
                                 </div>
                                 <div id="tgStep2" class="space-y-3 hidden mt-4">
                                     <input type="text" id="tgCode" placeholder="Код из Telegram" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl">
-                                    <input type="password" id="tgPassword" placeholder="Облачный пароль 2FA (если есть)" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl">
-                                    <button onclick="tgVerifyCode()" class="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-xl font-medium">Подтвердить и авторизовать</button>
+                                    <input type="password" id="tgPassword" placeholder="Облачный пароль 2FA" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl">
+                                    <button onclick="tgVerifyCode()" class="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-xl font-medium">Подтвердить</button>
                                 </div>
                                 <p id="tgRes" class="text-sm mt-3"></p>
                             </div>
 
                             <!-- Управление FAQ -->
                             <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl">
-                                <h3 class="text-lg font-bold mb-4">📖 Добавить вопрос в FAQ</h3>
-                                <div class="space-y-3">
+                                <h3 class="text-lg font-bold mb-4">📖 Управление FAQ</h3>
+                                <div class="space-y-3 mb-6">
                                     <input type="text" id="faqQ" placeholder="Вопрос" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl">
-                                    <textarea id="faqA" placeholder="Подробный ответ" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl"></textarea>
-                                    <button onclick="addFaq()" class="bg-indigo-600 hover:bg-indigo-500 px-6 py-2.5 rounded-xl font-bold">Добавить гайд</button>
+                                    <textarea id="faqA" placeholder="Ответ" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl"></textarea>
+                                    <button onclick="addFaq()" class="bg-indigo-600 hover:bg-indigo-500 px-6 py-2.5 rounded-xl font-bold">Добавить вопрос</button>
+                                </div>
+                                <div class="space-y-2">
+                                    ${(appData.faq || []).map(f => `
+                                        <div class="flex justify-between items-center bg-slate-950 p-3 rounded-xl border border-slate-800 text-sm">
+                                            <span><b>${f.question}</b></span>
+                                            <button onclick="deleteFaq(${f.id})" class="text-xs bg-red-950 text-red-400 px-3 py-1.5 rounded-lg">Удалить</button>
+                                        </div>
+                                    `).join('')}
                                 </div>
                             </div>
 
-                            <!-- Управление ботами -->
-                            <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl">
-                                <h3 class="text-lg font-bold mb-4">🤖 Добавить бота в каталог</h3>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-                                    <input type="text" id="botTitle" placeholder="Название" class="bg-slate-950 border border-slate-800 p-3 rounded-xl">
-                                    <input type="text" id="botCategory" placeholder="Категория" class="bg-slate-950 border border-slate-800 p-3 rounded-xl">
-                                    <input type="text" id="botDesc" placeholder="Описание" class="bg-slate-950 border border-slate-800 p-3 rounded-xl">
-                                    <input type="text" id="botLink" placeholder="Ссылка (https://t.me/...)" class="bg-slate-950 border border-slate-800 p-3 rounded-xl">
+                            <!-- Боты и Скамеры -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl">
+                                    <h3 class="text-lg font-bold mb-4">🤖 Каталог Ботов</h3>
+                                    <div class="space-y-3 mb-4">
+                                        <input type="text" id="botTitle" placeholder="Название" class="bg-slate-950 border border-slate-800 p-3 rounded-xl w-full">
+                                        <input type="text" id="botCategory" placeholder="Категория" class="bg-slate-950 border border-slate-800 p-3 rounded-xl w-full">
+                                        <input type="text" id="botDesc" placeholder="Описание" class="bg-slate-950 border border-slate-800 p-3 rounded-xl w-full">
+                                        <input type="text" id="botLink" placeholder="Ссылка" class="bg-slate-950 border border-slate-800 p-3 rounded-xl w-full">
+                                        <button onclick="addBot()" class="bg-indigo-600 hover:bg-indigo-500 w-full py-2.5 rounded-xl font-bold">Добавить бота</button>
+                                    </div>
+                                    <div class="space-y-2 max-h-40 overflow-y-auto">
+                                        ${(appData.bots || []).map(b => `
+                                            <div class="flex justify-between items-center bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-xs">
+                                                <span>${b.title}</span>
+                                                <button onclick="deleteBot(${b.id})" class="bg-red-950 text-red-400 px-2 py-1 rounded">Удалить</button>
+                                            </div>
+                                        `).join('')}
+                                    </div>
                                 </div>
-                                <button onclick="addBot()" class="bg-indigo-600 hover:bg-indigo-500 px-6 py-2.5 rounded-xl font-bold">Добавить бота</button>
+
+                                <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl">
+                                    <h3 class="text-lg font-bold mb-4 text-red-400">🚨 База Скамеров</h3>
+                                    <div class="space-y-3 mb-4">
+                                        <input type="text" id="scamUser" placeholder="@username" class="bg-slate-950 border border-slate-800 p-3 rounded-xl w-full">
+                                        <input type="text" id="scamReason" placeholder="Причина" class="bg-slate-950 border border-slate-800 p-3 rounded-xl w-full">
+                                        <input type="text" id="scamProof" placeholder="Пруфы (ссылка)" class="bg-slate-950 border border-slate-800 p-3 rounded-xl w-full">
+                                        <button onclick="addScammer()" class="bg-red-600 hover:bg-red-500 w-full py-2.5 rounded-xl font-bold">Внести скамера</button>
+                                    </div>
+                                    <div class="space-y-2 max-h-40 overflow-y-auto">
+                                        ${(appData.scammers || []).map(sc => `
+                                            <div class="flex justify-between items-center bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-xs">
+                                                <span>${sc.username}</span>
+                                                <button onclick="deleteScammer(${sc.id})" class="bg-red-950 text-red-400 px-2 py-1 rounded">Удалить</button>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
                             </div>
 
-                            <!-- Управление скамерами -->
+                            <!-- Логи -->
                             <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl">
-                                <h3 class="text-lg font-bold mb-4 text-red-400">🚨 Добавить скамера в базу</h3>
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-                                    <input type="text" id="scamUser" placeholder="@username" class="bg-slate-950 border border-slate-800 p-3 rounded-xl">
-                                    <input type="text" id="scamReason" placeholder="Причина скама" class="bg-slate-950 border border-slate-800 p-3 rounded-xl">
-                                    <input type="text" id="scamProof" placeholder="Ссылка на пруфы" class="bg-slate-950 border border-slate-800 p-3 rounded-xl">
+                                <h3 class="text-lg font-bold mb-4">📊 Логи активности (Последние 50)</h3>
+                                <div class="space-y-2 max-h-60 overflow-y-auto">
+                                    ${(appData.logs || []).map(l => `
+                                        <div class="text-xs bg-slate-950 p-3 rounded-xl border border-slate-800 flex justify-between">
+                                            <span><b>${l.user_id}</b>: ${l.action} (${l.ip})</span>
+                                            <span class="text-slate-500">${new Date(l.timestamp).toLocaleTimeString()}</span>
+                                        </div>
+                                    `).join('')}
                                 </div>
-                                <button onclick="addScammer()" class="bg-red-600 hover:bg-red-500 px-6 py-2.5 rounded-xl font-bold">Внести скамера</button>
                             </div>
                         </div>
                     `;
@@ -315,14 +400,57 @@
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ password: document.getElementById('adminPass').value })
             }).then(r => r.json());
-            if (res.success) { showToast('Успешный вход в админку!'); loadData(); }
+            if (res.success) { showToast('Успешный вход!'); loadData(); }
             else showToast('Неверный пароль', 'error');
         }
 
         async function logoutAdmin() {
             await fetch('/api/logout', { method: 'POST' });
             loadData();
-            showToast('Выход из админки выполнен');
+            showToast('Выход выполнен');
+        }
+
+        async function saveSettings() {
+            await fetch('/api/admin/settings', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ key: 'app_title', value: document.getElementById('cfgAppTitle').value }) });
+            await fetch('/api/admin/settings', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ key: 'launcher_title', value: document.getElementById('cfgLncTitle').value }) });
+            await fetch('/api/admin/settings', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ key: 'bio', value: document.getElementById('cfgBio').value }) });
+            loadData();
+            showToast('Настройки сохранены!');
+        }
+
+        async function saveTab(id) {
+            await fetch('/api/admin/tabs', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    id,
+                    name: document.getElementById(`tName_${id}`).value,
+                    title: '',
+                    is_enabled: document.getElementById(`tEn_${id}`).value
+                })
+            });
+            loadData();
+            showToast('Вкладка обновлена!');
+        }
+
+        async function createPromo() {
+            await fetch('/api/admin/promocodes', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    code: document.getElementById('pCode').value,
+                    days: document.getElementById('pDays').value,
+                    uses: document.getElementById('pUses').value
+                })
+            });
+            loadData();
+            showToast('Промокод создан!');
+        }
+
+        async function deletePromo(id) {
+            await fetch(`/api/admin/promocodes/${id}`, { method: 'DELETE' });
+            loadData();
+            showToast('Промокод удален');
         }
 
         async function tgSendCode() {
@@ -365,6 +493,25 @@
             showToast('Аккаунт удален');
         }
 
+        async function addFaq() {
+            await fetch('/api/admin/faq', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    question: document.getElementById('faqQ').value,
+                    answer: document.getElementById('faqA').value
+                })
+            });
+            loadData();
+            showToast('Вопрос добавлен в FAQ!');
+        }
+
+        async function deleteFaq(id) {
+            await fetch(`/api/admin/faq/${id}`, { method: 'DELETE' });
+            loadData();
+            showToast('Вопрос удален');
+        }
+
         async function addBot() {
             await fetch('/api/admin/bots', {
                 method: 'POST',
@@ -377,20 +524,13 @@
                 })
             });
             loadData();
-            showToast('Бот добавлен в каталог!');
+            showToast('Бот добавлен!');
         }
 
-        async function addFaq() {
-            await fetch('/api/admin/faq', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    question: document.getElementById('faqQ').value,
-                    answer: document.getElementById('faqA').value
-                })
-            });
+        async function deleteBot(id) {
+            await fetch(`/api/admin/bots/${id}`, { method: 'DELETE' });
             loadData();
-            showToast('Гайд добавлен в FAQ!');
+            showToast('Бот удален');
         }
 
         async function addScammer() {
@@ -404,7 +544,13 @@
                 })
             });
             loadData();
-            showToast('Скамер успешно внесен в базу!');
+            showToast('Скамер добавлен!');
+        }
+
+        async function deleteScammer(id) {
+            await fetch(`/api/admin/scammers/${id}`, { method: 'DELETE' });
+            loadData();
+            showToast('Скамер удален');
         }
 
         loadData();
