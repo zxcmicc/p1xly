@@ -3,606 +3,296 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P1xly SaaS</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, -apple-system, sans-serif; }
-        body { background: #080b10; color: #e6edf3; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
-
-        #launcher-modal {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(8, 11, 16, 0.95); backdrop-filter: blur(10px);
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            z-index: 100; transition: opacity 0.3s ease;
-        }
-        .launcher-card {
-            background: #111622; border: 1px solid #21293d; border-radius: 16px;
-            padding: 30px; text-align: center; max-width: 400px; width: 90%;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
-        }
-        .launch-btn {
-            background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #fff;
-            border: none; padding: 14px 28px; font-size: 16px; font-weight: 700;
-            border-radius: 10px; cursor: pointer; margin-top: 20px; width: 100%;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .launch-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(37, 99, 235, 0.4); }
-
-        .app-container { width: 100%; max-width: 800px; display: none; opacity: 0; transition: opacity 0.4s ease; }
-        .app-container.visible { display: block; opacity: 1; }
-
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
-        .nav-tabs { display: flex; gap: 6px; background: #111622; padding: 6px; border-radius: 12px; border: 1px solid #21293d; flex-wrap: wrap; }
-        .tab-btn {
-            background: transparent; border: none; color: #8b949e; padding: 8px 14px;
-            font-weight: 600; border-radius: 8px; cursor: pointer; transition: 0.2s; font-size: 13px;
-        }
-        .tab-btn.active, .tab-btn:hover { background: #1f293d; color: #58a6ff; }
-        .admin-tab-btn { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
-        .admin-tab-btn:hover { background: rgba(239, 68, 68, 0.3); color: #f87171; }
-
-        .grid-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 15px; }
-        .bot-card, .scam-card {
-            background: #111622; border: 1px solid #21293d; border-radius: 12px; padding: 16px;
-            display: flex; flex-direction: column; justify-content: space-between; transition: 0.2s;
-        }
-        .bot-card:hover, .scam-card:hover { border-color: #ef4444; transform: translateY(-3px); }
-        .tag { display: inline-block; padding: 3px 8px; font-size: 11px; font-weight: bold; border-radius: 6px; margin-bottom: 10px; background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
-        .tag-scam { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
-
-        input, select, textarea { width: 100%; padding: 12px; background: #080b10; border: 1px solid #21293d; color: #fff; border-radius: 8px; margin-bottom: 12px; outline: none; box-sizing: border-box; }
-        .btn-main { background: #238636; color: #fff; border: none; padding: 10px; border-radius: 8px; font-weight: 600; cursor: pointer; width: 100%; text-decoration: none; text-align: center; display: block; }
-        .btn-main:hover { background: #2ea043; }
-
-        .card-box { background: #111622; border: 1px solid #21293d; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
-        .link-item { display: block; padding: 10px; background: #161b22; border-radius: 6px; margin-bottom: 8px; color: #58a6ff; text-decoration: none; border: 1px solid #21293d; }
-        .item-row { display: flex; justify-content: space-between; align-items: center; background: #161b22; padding: 10px; margin-bottom: 8px; border-radius: 6px; border: 1px solid #21293d; }
-        .log-item { background: #161b22; padding: 10px; margin-bottom: 8px; border-radius: 6px; border: 1px solid #21293d; font-size: 12px; color: #8b949e; }
-        .del-btn { background: #ef4444; width: auto; padding: 5px 10px; margin: 0; border: none; border-radius: 4px; color: #fff; cursor: pointer; }
-    </style>
+    <title>P1xly Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+    <div id="app" class="max-w-6xl mx-auto p-6">
+        <!-- Верхнее меню динамических вкладок -->
+        <nav id="nav-tabs" class="flex flex-wrap gap-3 mb-8 border-b border-slate-800 pb-4">
+            <!-- Динамически заполнится из БД -->
+        </nav>
 
-    <div id="launcher-modal">
-        <div class="launcher-card">
-            <h1 id="lnc-title" style="margin-bottom: 8px;">🚀 P1xly System</h1>
-            <p id="lnc-desc" style="color: #8b949e; font-size: 14px;">Центр управления</p>
-            <button class="launch-btn" onclick="startApp()">Запустить панель</button>
-        </div>
-    </div>
-
-    <div class="app-container" id="main-app">
-        <div class="header">
-            <h2 id="app-header-title">P1xly Dashboard</h2>
-            <div class="nav-tabs" id="nav-tabs-container"></div>
-        </div>
-
-        <div id="section-catalog" class="tab-section" style="display:none;">
-            <h3 id="title-catalog" style="margin-bottom: 10px; color: #8b949e;">Доступные модули:</h3>
-            <div class="grid-container" id="bots-container">Загрузка...</div>
-        </div>
-
-        <div id="section-sender" class="tab-section" style="display: none;">
-            <div class="card-box">
-                <h3 id="title-sender" style="margin-bottom: 15px; text-align: center;">🤖 Отправка сообщений</h3>
-                <div id="sender-paywall" style="text-align: center; padding: 20px;">
-                    <p style="color: #ef4444; font-weight: bold; margin-bottom: 10px;">🔒 Доступ заблокирован</p>
-                    <p style="color: #8b949e; font-size: 13px; margin-bottom: 15px;">Требуется подписка по промокоду.</p>
-                    <button class="btn-main" onclick="switchSection('sub')">Активировать</button>
-                </div>
-                <div id="sender-control" style="display: none;">
-                    <label style="font-size: 12px; color: #8b949e; display:block; margin-bottom: 5px;">Аккаунт:</label>
-                    <select id="account-select"></select>
-                    <label style="font-size: 12px; color: #8b949e; display:block; margin-bottom: 5px;">Получатель (@username):</label>
-                    <input type="text" id="recipient-input" placeholder="@username">
-                    <label style="font-size: 12px; color: #8b949e; display:block; margin-bottom: 5px;">Текст:</label>
-                    <input type="text" id="chat-input" placeholder="Привет!">
-                    <button class="btn-main" onclick="sendTgMessage()">Отправить</button>
-                    <p id="send-status" style="font-size: 13px; margin-top: 10px; text-align: center;"></p>
-                </div>
-            </div>
-        </div>
-
-        <div id="section-scammers" class="tab-section" style="display: none;">
-            <h3 id="title-scammers" style="margin-bottom: 10px; color: #ef4444;">🚨 Черный список (Скамеры)</h3>
-            <div class="grid-container" id="scammers-container">Загрузка базы...</div>
-        </div>
-
-        <div id="section-owner" class="tab-section" style="display: none;">
-            <div class="card-box" style="text-align: center;">
-                <h3 id="title-owner" style="margin-bottom: 10px; color: #fff;">👤 О владельце</h3>
-                <p id="bio-text" style="color: #8b949e; font-size: 14px; margin-bottom: 20px; white-space: pre-wrap;">Загрузка...</p>
-                <div id="links-container"></div>
-            </div>
-        </div>
-
-        <div id="section-sub" class="tab-section" style="display: none;">
-            <div class="card-box" style="text-align: center;">
-                <h3 id="title-sub">Активация подписки</h3>
-                <input type="text" id="promo-input" placeholder="Введите промокод" style="text-align: center; margin-top: 10px;">
-                <button class="btn-main" onclick="activatePromo()">Активировать</button>
-                <p id="promo-status" style="font-size: 13px; margin-top: 10px;"></p>
-            </div>
-        </div>
-
-        <!-- АДМИНКА С ЛОГАМИ -->
-        <div id="section-admin" class="tab-section" style="display: none;">
-            <div class="card-box">
-                <h3 style="color: #ef4444; margin-bottom: 15px;">⚡ Полный Контроль (Админ-панель)</h3>
-                
-                <div id="admin-login-box">
-                    <input type="password" id="admin-pass-input" placeholder="Пароль администратора">
-                    <button class="btn-main" onclick="adminLogin()">Войти в админку</button>
-                </div>
-
-                <div id="admin-content-box" style="display: none;">
-                    
-                    <!-- Логи посещений -->
-                    <h4 style="color: #60a5fa; margin-top: 10px;">📊 Логи посещений и действий (Последние 50)</h4>
-                    <div id="admin-logs-list" style="max-height: 250px; overflow-y: auto; margin-top: 10px; margin-bottom: 20px;"></div>
-
-                    <h4 style="color: #60a5fa; margin-top: 10px;">⚙️ Глобальные тексты</h4>
-                    <input type="text" id="cfg-app_title" placeholder="Название в шапке">
-                    <input type="text" id="cfg-launcher_title" placeholder="Заголовок лаунчера">
-                    <textarea id="cfg-bio" rows="2" placeholder="Био владельца"></textarea>
-                    <button class="btn-main" onclick="saveSettings()">Сохранить настройки</button>
-
-                    <h4 style="color: #60a5fa; margin-top: 20px;">📁 Управление вкладками</h4>
-                    <div id="admin-tabs-list"></div>
-
-                    <h4 style="color: #60a5fa; margin-top: 20px;">🎁 Промокоды</h4>
-                    <input type="text" id="promo-code-input" placeholder="Код (например: BRO)">
-                    <input type="number" id="promo-days-input" placeholder="Дней подписки">
-                    <input type="number" id="promo-uses-input" placeholder="Лимит активаций">
-                    <button class="btn-main" onclick="createPromo()">Создать промокод</button>
-                    <div id="admin-promos-list" style="margin-top: 10px;"></div>
-
-                    <h4 style="color: #60a5fa; margin-top: 20px;">📱 MTProto Аккаунты</h4>
-                    <div id="auth-step-1">
-                        <input type="text" id="phone-input" placeholder="Номер телефона (+998...)">
-                        <button class="btn-main" onclick="sendPhoneCode()">Запросить код в Telegram</button>
-                    </div>
-                    <div id="auth-step-2" style="display:none;">
-                        <input type="text" id="code-input" placeholder="Код из Telegram">
-                        <input type="password" id="password-2fa" placeholder="Пароль 2FA (если есть)">
-                        <button class="btn-main" onclick="verifyPhoneCode()">Подтвердить и войти</button>
-                    </div>
-                    <p id="auth-status" style="font-size: 13px; margin-top: 5px;"></p>
-                    <div id="admin-accounts" style="margin-top: 10px;"></div>
-
-                    <h4 style="color: #60a5fa; margin-top: 20px;">🤖 Каталог Ботов</h4>
-                    <input type="text" id="bot-title" placeholder="Название бота">
-                    <input type="text" id="bot-cat" placeholder="Категория">
-                    <input type="text" id="bot-desc" placeholder="Описание">
-                    <input type="text" id="bot-link" placeholder="Ссылка">
-                    <button class="btn-main" onclick="addBot()">Добавить бота</button>
-                    <div id="admin-bots" style="margin-top: 10px;"></div>
-
-                    <h4 style="color: #60a5fa; margin-top: 20px;">🚨 База Скамеров</h4>
-                    <input type="text" id="scam-user" placeholder="Username (@scamer)">
-                    <input type="text" id="scam-reason" placeholder="Причина">
-                    <input type="text" id="scam-proof" placeholder="Пруфы">
-                    <button class="btn-main" onclick="addScammer()">Внести скамера</button>
-                    <div id="admin-scammers" style="margin-top: 10px;"></div>
-
-                </div>
-            </div>
-        </div>
+        <!-- Контент страниц -->
+        <main id="main-content">
+            <!-- Динамический контент -->
+        </main>
     </div>
 
     <script>
-        let userId = localStorage.getItem('p1xly_user_id');
-        if (!userId) {
-            userId = 'user_' + Math.random().toString(36).substring(2, 11);
-            localStorage.setItem('p1xly_user_id', userId);
-        }
-
-        let currentSessionId = null;
-        let globalData = {};
-
-        function startApp() {
-            document.getElementById('launcher-modal').style.opacity = '0';
-            setTimeout(() => {
-                document.getElementById('launcher-modal').style.display = 'none';
-                document.getElementById('main-app').classList.add('visible');
-            }, 300);
-            loadData();
-            checkAuthStatus();
-            checkSubscription();
-        }
-
-        function switchSection(name) {
-            document.querySelectorAll('.tab-section').forEach(s => s.style.display = 'none');
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            
-            const targetSection = document.getElementById(`section-${name}`);
-            if(targetSection) targetSection.style.display = 'block';
-            
-            const targetBtn = document.getElementById(`btn-tab-${name}`);
-            if(targetBtn) targetBtn.classList.add('active');
-
-            if (name === 'sender') checkSubscription();
-            if (name === 'admin') checkAuthStatus();
-        }
-
-        async function checkAuthStatus() {
-            let res = await fetch('/api/check-auth');
-            let data = await res.json();
-            if (data.isAdmin) {
-                document.getElementById('admin-login-box').style.display = 'none';
-                document.getElementById('admin-content-box').style.display = 'block';
-                loadAdminData();
-            } else {
-                document.getElementById('admin-login-box').style.display = 'block';
-                document.getElementById('admin-content-box').style.display = 'none';
-            }
-        }
-
-        async function adminLogin() {
-            let password = document.getElementById('admin-pass-input').value;
-            let res = await fetch('/api/login', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ password })
-            });
-            let data = await res.json();
-            if (data.success) {
-                checkAuthStatus();
-            } else {
-                alert('Неверный пароль администратора!');
-            }
-        }
+        let appData = {};
+        let currentUserId = localStorage.getItem('p1xly_user_id') || 'user_' + Math.random().toString(36).substring(2, 9);
+        localStorage.setItem('p1xly_user_id', currentUserId);
 
         async function loadData() {
-            try {
-                let res = await fetch('/api/data');
-                globalData = await res.json();
-                
-                if(globalData.settings) {
-                    if(globalData.settings.app_title) document.getElementById('app-header-title').innerText = globalData.settings.app_title;
-                    if(globalData.settings.launcher_title) document.getElementById('lnc-title').innerText = globalData.settings.launcher_title;
-                    if(globalData.settings.bio) document.getElementById('bio-text').innerText = globalData.settings.bio;
-                }
+            const res = await fetch('/api/data');
+            appData = await res.json();
+            renderNav();
+            renderActiveTab();
+        }
 
-                let navContainer = document.getElementById('nav-tabs-container');
-                navContainer.innerHTML = '';
-                let firstEnabledTab = null;
+        let activeTab = 'catalog';
 
-                (globalData.tabs || []).forEach((tab) => {
-                    if (tab.is_enabled == 1) {
-                        if (!firstEnabledTab) firstEnabledTab = tab.id;
-                        navContainer.innerHTML += `<button id="btn-tab-${tab.id}" class="tab-btn" onclick="switchSection('${tab.id}')">${tab.name}</button>`;
-                        
-                        let titleElem = document.getElementById(`title-${tab.id}`);
-                        if (titleElem && tab.title) titleElem.innerText = tab.title;
-                    }
+        function renderNav() {
+            const nav = document.getElementById('nav-tabs');
+            nav.innerHTML = '';
+            
+            if (appData.tabs) {
+                appData.tabs.forEach(tab => {
+                    if (!tab.is_enabled && !localStorage.getItem('isAdmin')) return;
+                    const btn = document.createElement('button3' || 'button');
+                    btn.className = `px-4 py-2 rounded-xl font-medium transition ${activeTab === tab.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'bg-slate-900 text-slate-400 hover:bg-slate-800'}`;
+                    btn.innerText = tab.name;
+                    btn.onclick = () => { activeTab = tab.id; renderActiveTab(); };
+                    nav.appendChild(btn);
                 });
-                navContainer.innerHTML += `<button id="btn-tab-admin" class="tab-btn admin-tab-btn" onclick="switchSection('admin')">⚙️ Админка</button>`;
+            }
 
-                if (firstEnabledTab) switchSection(firstEnabledTab);
+            // Кнопка админки
+            const adminBtn = document.createElement('button');
+            adminBtn.className = `px-4 py-2 rounded-xl font-medium transition bg-slate-900 text-red-400 border border-red-900/50 hover:bg-red-950/30 ml-auto`;
+            adminBtn.innerText = '⚙️ Админка';
+            adminBtn.onclick = () => { activeTab = 'admin'; renderActiveTab(); };
+            nav.appendChild(adminBtn);
+        }
 
-                let botsContainer = document.getElementById('bots-container');
-                botsContainer.innerHTML = '';
-                if(globalData.bots && globalData.bots.length > 0) {
-                    globalData.bots.forEach(bot => {
-                        botsContainer.innerHTML += `
-                            <div class="bot-card">
-                                <div>
-                                    <span class="tag">${bot.category.toUpperCase()}</span>
-                                    <h4>${bot.title}</h4>
-                                    <p style="font-size: 12px; color: #8b949e; margin-top: 5px;">${bot.description}</p>
-                                </div>
-                                <a href="${bot.link}" target="_blank" class="btn-main" style="margin-top: 15px;">Открыть</a>
-                            </div>`;
-                    });
-                } else {
-                    botsContainer.innerHTML = '<p style="color:#8b949e">Каталог пуст.</p>';
+        async function renderActiveTab() {
+            renderNav();
+            const main = document.getElementById('main-content');
+            
+            if (activeTab === 'catalog') {
+                main.innerHTML = `
+                    <h2 class="text-2xl font-bold mb-6">${appData.settings?.launcher_title || 'Каталог'}</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        ${(appData.bots || []).map(b => `
+                            <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+                                <span class="text-xs px-2.5 py-1 bg-indigo-500/10 text-indigo-400 rounded-lg">${b.category}</span>
+                                <h3 class="text-lg font-bold mt-3">${b.title}</h3>
+                                <p class="text-sm text-slate-400 mt-1">${b.description}</p>
+                                <a href="${b.link}" target="_blank" class="mt-4 block text-center bg-indigo-600 hover:bg-indigo-500 py-2 rounded-xl font-medium transition">Открыть</a>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } else if (activeTab === 'sender') {
+                const subCheck = await fetch('/api/check-sub', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ userId: currentUserId })
+                }).then(r => r.json());
+
+                if (!subCheck.active) {
+                    main.innerHTML = `
+                        <div class="max-w-md mx-auto bg-slate-900 border border-slate-800 p-8 rounded-3xl text-center">
+                            <h2 class="text-2xl font-bold text-red-400">Требуется подписка</h2>
+                            <p class="text-slate-400 mt-2">Для использования мульти-аккаунт отправки активируйте подписку во вкладке «Подписка».</p>
+                        </div>
+                    `;
+                    return;
                 }
 
-                let scamContainer = document.getElementById('scammers-container');
-                scamContainer.innerHTML = '';
-                if(globalData.scammers && globalData.scammers.length > 0) {
-                    globalData.scammers.forEach(sc => {
-                        scamContainer.innerHTML += `
-                            <div class="scam-card">
+                main.innerHTML = `
+                    <div class="max-w-xl mx-auto bg-slate-900 border border-slate-800 p-8 rounded-3xl">
+                        <h2 class="text-xl font-bold mb-6">Мульти-аккаунт отправка</h2>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="text-sm text-slate-400">Аккаунт:</label>
+                                <select id="accId" class="w-full mt-1 bg-slate-950 border border-slate-800 p-3 rounded-xl">
+                                    ${(subCheck.accounts || []).map(a => `<option value="${a.id}">${a.name}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-sm text-slate-400">Получатель (@username):</label>
+                                <input type="text" id="recipient" class="w-full mt-1 bg-slate-950 border border-slate-800 p-3 rounded-xl" placeholder="@username">
+                            </div>
+                            <div>
+                                <label class="text-sm text-slate-400">Текст:</label>
+                                <textarea id="msgText" class="w-full mt-1 bg-slate-950 border border-slate-800 p-3 rounded-xl" placeholder="Текст сообщения..."></textarea>
+                            </div>
+                            <button onclick="sendMessage()" class="w-full bg-emerald-600 hover:bg-emerald-500 py-3 rounded-xl font-bold transition">Отправить</button>
+                            <p id="sendResult" class="text-sm text-center mt-2"></p>
+                        </div>
+                    </div>
+                `;
+            } else if (activeTab === 'scammers') {
+                main.innerHTML = `
+                    <h2 class="text-2xl font-bold mb-6">🚨 База Скамеров</h2>
+                    <div class="space-y-3">
+                        ${(appData.scammers || []).map(s => `
+                            <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex justify-between items-center">
                                 <div>
-                                    <span class="tag tag-scam">СКАМЕР</span>
-                                    <h4 style="color: #ef4444;">${sc.username}</h4>
-                                    <p style="font-size: 12px; color: #8b949e; margin-top: 5px;"><b>Причина:</b> ${sc.reason}</p>
+                                    <span class="font-bold text-red-400">${s.username}</span>
+                                    <p class="text-sm text-slate-400">${s.reason}</p>
                                 </div>
-                                ${sc.proof ? `<a href="${sc.proof}" target="_blank" class="btn-main" style="margin-top: 15px; background: #dc2626;">Смотреть пруфы</a>` : ''}
-                            </div>`;
-                    });
+                                <a href="${s.proof}" target="_blank" class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded-xl">Пруфы</a>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } else if (activeTab === 'owner') {
+                main.innerHTML = `
+                    <div class="max-w-md mx-auto bg-slate-900 border border-slate-800 p-8 rounded-3xl text-center">
+                        <h2 class="text-xl font-bold mb-4">О владельце</h2>
+                        <p class="text-slate-300">${appData.settings?.bio || 'Информация не указана'}</p>
+                    </div>
+                `;
+            } else if (activeTab === 'sub') {
+                main.innerHTML = `
+                    <div class="max-w-md mx-auto bg-slate-900 border border-slate-800 p-8 rounded-3xl">
+                        <h2 class="text-xl font-bold mb-4">Активация подписки</h2>
+                        <input type="text" id="promoCode" placeholder="Введите промокод" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl mb-4">
+                        <button onclick="activatePromo()" class="w-full bg-indigo-600 hover:bg-indigo-500 py-3 rounded-xl font-bold transition">Активировать</button>
+                        <p id="promoRes" class="text-sm text-center mt-3"></p>
+                    </div>
+                `;
+            } else if (activeTab === 'admin') {
+                const isAdmin = await fetch('/api/check-auth').then(r => r.json());
+                if (!isAdmin.isAdmin) {
+                    main.innerHTML = `
+                        <div class="max-w-sm mx-auto bg-slate-900 border border-slate-800 p-8 rounded-3xl text-center">
+                            <h2 class="text-xl font-bold mb-4">Вход в админку</h2>
+                            <input type="password" id="adminPass" placeholder="Пароль" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl mb-4">
+                            <button onclick="loginAdmin()" class="w-full bg-indigo-600 hover:bg-indigo-500 py-3 rounded-xl font-bold transition">Войти</button>
+                        </div>
+                    `;
                 } else {
-                    scamContainer.innerHTML = '<p style="color:#8b949e">База чиста, скамеров нет.</p>';
+                    main.innerHTML = `
+                        <div class="space-y-8">
+                            <div class="flex justify-between items-center">
+                                <h2 class="text-2xl font-bold">Панель управления</h2>
+                                <button onclick="logoutAdmin()" class="bg-red-600 hover:bg-red-500 px-4 py-2 rounded-xl text-sm">Выйти</button>
+                            </div>
+                            
+                            <!-- Добавление аккаунта MTProto -->
+                            <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl">
+                                <h3 class="text-lg font-bold mb-4">🤖 Авторизация Telegram аккаунта</h3>
+                                <div id="tgStep1" class="space-y-3">
+                                    <input type="text" id="tgPhone" placeholder="+998..." class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl">
+                                    <button onclick="tgSendCode()" class="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-xl">Запросить код</button>
+                                </div>
+                                <div id="tgStep2" class="space-y-3 hidden mt-4">
+                                    <input type="text" id="tgCode" placeholder="Код из Телеграма" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl">
+                                    <input type="password" id="tgPassword" placeholder="Облачный пароль 2FA (если есть)" class="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl">
+                                    <button onclick="tgVerifyCode()" class="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-xl">Подтвердить и добавить</button>
+                                </div>
+                                <p id="tgRes" class="text-sm mt-3"></p>
+                            </div>
+
+                            <!-- Управление ботами -->
+                            <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl">
+                                <h3 class="text-lg font-bold mb-4">Добавить бота в каталог</h3>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <input type="text" id="botTitle" placeholder="Название" class="bg-slate-950 border border-slate-800 p-3 rounded-xl">
+                                    <input type="text" id="botCategory" placeholder="Категория" class="bg-slate-950 border border-slate-800 p-3 rounded-xl">
+                                    <input type="text" id="botDesc" placeholder="Описание" class="bg-slate-950 border border-slate-800 p-3 rounded-xl">
+                                    <input type="text" id="botLink" placeholder="Ссылка (https://t.me/...)" class="bg-slate-950 border border-slate-800 p-3 rounded-xl">
+                                </div>
+                                <button onclick="addBot()" class="mt-4 bg-indigo-600 hover:bg-indigo-500 px-6 py-2 rounded-xl">Добавить бота</button>
+                            </div>
+
+                            <!-- Логи -->
+                            <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl">
+                                <h3 class="text-lg font-bold mb-4">📜 Логи активности</h3>
+                                <div class="space-y-2 max-h-60 overflow-y-auto">
+                                    ${(appData.logs || []).map(l => `
+                                        <div class="text-xs bg-slate-950 p-3 rounded-xl border border-slate-800/50 flex justify-between">
+                                            <span><b>${l.user_id}</b>: ${l.action} (${l.ip})</span>
+                                            <span class="text-slate-500">${new Date(l.timestamp).toLocaleTimeString()}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    `;
                 }
-            } catch(e) { console.error(e); }
-        }
-
-        async function loadAdminData() {
-            let res = await fetch('/api/data');
-            let data = await res.json();
-
-            document.getElementById('cfg-app_title').value = data.settings.app_title || '';
-            document.getElementById('cfg-launcher_title').value = data.settings.launcher_title || '';
-            document.getElementById('cfg-bio').value = data.settings.bio || '';
-
-            // Отрисовка логов
-            let logsList = document.getElementById('admin-logs-list');
-            logsList.innerHTML = '';
-            (data.logs || []).forEach(l => {
-                logsList.innerHTML += `
-                    <div class="log-item">
-                        <b>[${l.timestamp}]</b> User: <code>${l.user_id}</code> | IP: <code>${l.ip}</code><br>
-                        <b>Действие:</b> ${l.action}<br>
-                        <span style="font-size: 10px; color: #58a6ff;">Устройство: ${l.device}</span>
-                    </div>`;
-            });
-
-            let tabsList = document.getElementById('admin-tabs-list');
-            tabsList.innerHTML = '';
-            data.tabs.forEach(t => {
-                tabsList.innerHTML += `
-                    <div class="item-row" style="flex-direction: column; align-items: stretch; gap: 6px;">
-                        <div><b>ID: ${t.id}</b></div>
-                        <input type="text" id="admin-t-name-${t.id}" value="${t.name}" placeholder="Имя на кнопке">
-                        <input type="text" id="admin-t-title-${t.id}" value="${t.title}" placeholder="Заголовок раздела">
-                        <select id="admin-t-en-${t.id}">
-                            <option value="1" ${t.is_enabled == 1 ? 'selected' : ''}>Включена</option>
-                            <option value="0" ${t.is_enabled == 0 ? 'selected' : ''}>Выключена (скрыта)</option>
-                        </select>
-                        <button class="btn-main" onclick="saveTab('${t.id}')">Обновить вкладку</button>
-                    </div>`;
-            });
-
-            let promosList = document.getElementById('admin-promos-list');
-            promosList.innerHTML = '';
-            data.promocodes.forEach(p => {
-                promosList.innerHTML += `
-                    <div class="item-row">
-                        <span><b>${p.code}</b> (+${p.days} дн., осталось: ${p.uses_left})</span>
-                        <button class="del-btn" onclick="deletePromo(${p.id})">Удалить</button>
-                    </div>`;
-            });
-
-            let accContainer = document.getElementById('admin-accounts');
-            accContainer.innerHTML = '';
-            data.accounts.forEach(acc => {
-                accContainer.innerHTML += `
-                    <div class="item-row">
-                        <span><b>${acc.name}</b></span>
-                        <button class="del-btn" onclick="deleteAccount(${acc.id})">Удалить</button>
-                    </div>`;
-            });
-
-            let botsList = document.getElementById('admin-bots');
-            botsList.innerHTML = '';
-            data.bots.forEach(b => {
-                botsList.innerHTML += `
-                    <div class="item-row">
-                        <span>[${b.category}] ${b.title}</span>
-                        <button class="del-btn" onclick="deleteBot(${b.id})">Удалить</button>
-                    </div>`;
-            });
-
-            let scamsList = document.getElementById('admin-scammers');
-            scamsList.innerHTML = '';
-            data.scammers.forEach(sc => {
-                scamsList.innerHTML += `
-                    <div class="item-row">
-                        <span><b>${sc.username}</b> — ${sc.reason}</span>
-                        <button class="del-btn" onclick="deleteScammer(${sc.id})">Удалить</button>
-                    </div>`;
-            });
-        }
-
-        async function saveSettings() {
-            await fetch('/api/admin/settings', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ key: 'app_title', value: document.getElementById('cfg-app_title').value })
-            });
-            await fetch('/api/admin/settings', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ key: 'launcher_title', value: document.getElementById('cfg-launcher_title').value })
-            });
-            await fetch('/api/admin/settings', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ key: 'bio', value: document.getElementById('cfg-bio').value })
-            });
-            alert('Настройки сохранены!');
-            loadData();
-        }
-
-        async function saveTab(id) {
-            let name = document.getElementById(`admin-t-name-${id}`).value;
-            let title = document.getElementById(`admin-t-title-${id}`).value;
-            let is_enabled = document.getElementById(`admin-t-en-${id}`).value;
-
-            await fetch('/api/admin/tabs', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ id, name, title, is_enabled })
-            });
-            alert('Вкладка обновлена!');
-            loadData();
-            loadAdminData();
-        }
-
-        async function createPromo() {
-            let code = document.getElementById('promo-code-input').value.trim();
-            let days = document.getElementById('promo-days-input').value;
-            let uses = document.getElementById('promo-uses-input').value;
-
-            if (!code || !days || !uses) return alert('Заполни все поля промокода!');
-
-            await fetch('/api/admin/promocodes', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ code, days, uses })
-            });
-            alert('Промокод создан!');
-            document.getElementById('promo-code-input').value = '';
-            document.getElementById('promo-days-input').value = '';
-            document.getElementById('promo-uses-input').value = '';
-            loadAdminData();
-        }
-
-        async function deletePromo(id) {
-            await fetch('/api/admin/promocodes/' + id, { method: 'DELETE' });
-            loadAdminData();
-        }
-
-        async function sendPhoneCode() {
-            let phone = document.getElementById('phone-input').value.trim();
-            let status = document.getElementById('auth-status');
-            status.innerText = 'Отправка кода в Telegram...';
-
-            let res = await fetch('/api/admin/auth/send-code', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ phone })
-            });
-            let data = await res.json();
-            if (data.success) {
-                currentSessionId = data.sessionId;
-                document.getElementById('auth-step-1').style.display = 'none';
-                document.getElementById('auth-step-2').style.display = 'block';
-                status.style.color = '#238636';
-                status.innerText = data.message;
-            } else {
-                status.style.color = '#ef4444';
-                status.innerText = data.message;
             }
         }
 
-        async function verifyPhoneCode() {
-            let code = document.getElementById('code-input').value.trim();
-            let password = document.getElementById('password-2fa').value.trim();
-            let status = document.getElementById('auth-status');
-            status.innerText = 'Авторизация...';
-
-            let res = await fetch('/api/admin/auth/verify-code', {
+        async function sendMessage() {
+            const res = await fetch('/api/tg/send', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ sessionId: currentSessionId, code, password })
-            });
-            let data = await res.json();
-            if (data.success) {
-                status.style.color = '#238636';
-                status.innerText = data.message;
-                document.getElementById('auth-step-1').style.display = 'block';
-                document.getElementById('auth-step-2').style.display = 'none';
-                loadAdminData();
-                loadData();
-            } else {
-                status.style.color = '#ef4444';
-                status.innerText = data.message;
-            }
-        }
-
-        async function deleteAccount(id) {
-            await fetch('/api/admin/accounts/' + id, { method: 'DELETE' });
-            loadAdminData();
-            loadData();
-        }
-
-        async function addBot() {
-            let title = document.getElementById('bot-title').value;
-            let category = document.getElementById('bot-cat').value;
-            let description = document.getElementById('bot-desc').value;
-            let link = document.getElementById('bot-link').value;
-
-            await fetch('/api/admin/bots', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ title, category, description, link })
-            });
-            alert('Бот добавлен!');
-            loadAdminData();
-            loadData();
-        }
-
-        async function deleteBot(id) {
-            await fetch('/api/admin/bots/' + id, { method: 'DELETE' });
-            loadAdminData();
-            loadData();
-        }
-
-        async function addScammer() {
-            let username = document.getElementById('scam-user').value;
-            let reason = document.getElementById('scam-reason').value;
-            let proof = document.getElementById('scam-proof').value;
-
-            await fetch('/api/admin/scammers', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ username, reason, proof })
-            });
-            alert('Скамер добавлен!');
-            loadAdminData();
-            loadData();
-        }
-
-        async function deleteScammer(id) {
-            await fetch('/api/admin/scammers/' + id, { method: 'DELETE' });
-            loadAdminData();
-            loadData();
-        }
-
-        async function checkSubscription() {
-            let res = await fetch('/api/check-sub', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId })
-            });
-            let data = await res.json();
-
-            if (data.active) {
-                document.getElementById('sender-paywall').style.display = 'none';
-                document.getElementById('sender-control').style.display = 'block';
-                let select = document.getElementById('account-select');
-                select.innerHTML = '';
-                data.accounts.forEach(acc => {
-                    select.innerHTML += `<option value="${acc.id}">${acc.name}</option>`;
-                });
-            } else {
-                document.getElementById('sender-paywall').style.display = 'block';
-                document.getElementById('sender-control').style.display = 'none';
-            }
+                body: JSON.stringify({
+                    userId: currentUserId,
+                    accountId: document.getElementById('accId').value,
+                    recipient: document.getElementById('recipient').value,
+                    message: document.getElementById('msgText').value
+                })
+            }).then(r => r.json());
+            document.getElementById('sendResult').innerText = res.message;
+            document.getElementById('sendResult').className = `text-sm text-center mt-2 ${res.success ? 'text-emerald-400' : 'text-red-400'}`;
         }
 
         async function activatePromo() {
-            let code = document.getElementById('promo-input').value.trim();
-            let status = document.getElementById('promo-status');
-            let res = await fetch('/api/activate-promo', {
+            const res = await fetch('/api/activate-promo', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, code })
-            });
-            let data = await res.json();
-            status.style.color = data.success ? '#238636' : '#ef4444';
-            status.innerText = data.message;
-            if (data.success) setTimeout(checkSubscription, 1000);
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ userId: currentUserId, code: document.getElementById('promoCode').value })
+            }).then(r => r.json());
+            document.getElementById('promoRes').innerText = res.message;
+            document.getElementById('promoRes').className = `text-sm text-center mt-3 ${res.success ? 'text-emerald-400' : 'text-red-400'}`;
         }
 
-        async function sendTgMessage() {
-            let accountId = document.getElementById('account-select').value;
-            let recipient = document.getElementById('recipient-input').value.trim();
-            let message = document.getElementById('chat-input').value.trim();
-            let status = document.getElementById('send-status');
-
-            let res = await fetch('/api/tg/send', {
+        async function loginAdmin() {
+            const res = await fetch('/api/login', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, accountId, recipient, message })
-            });
-            let data = await res.json();
-            status.style.color = data.success ? '#238636' : '#ef4444';
-            status.innerText = data.message;
-            if (data.success) document.getElementById('chat-input').value = '';
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ password: document.getElementById('adminPass').value })
+            }).then(r => r.json());
+            if (res.success) loadData();
+            else alert('Неверный пароль');
         }
+
+        async function logoutAdmin() {
+            await fetch('/api/post', { method: 'POST' }); // или стандартный логаут
+            await fetch('/api/logout', { method: 'POST' });
+            loadData();
+        }
+
+        let pendingSessionId = '';
+        async function tgSendCode() {
+            const res = await fetch('/api/admin/auth/send-code', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ phone: document.getElementById('tgPhone').value })
+            }).then(r => r.json());
+            if (res.success) {
+                pendingSessionId = res.sessionId;
+                document.getElementById('tgStep1').classList.add('hidden');
+                document.getElementById('tgStep2').classList.remove('hidden');
+            }
+            document.getElementById('tgRes').innerText = res.message;
+        }
+
+        async function tgVerifyCode() {
+            const res = await fetch('/api/admin/auth/verify-code', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    sessionId: pendingSessionId,
+                    code: document.getElementById('tgCode').value,
+                    password: document.getElementById('tgPassword').value
+                })
+            }).then(r => r.json());
+            document.getElementById('tgRes').innerText = res.message;
+            if (res.success) setTimeout(() => loadData(), 1500);
+        }
+
+        async function addBot() {
+            await fetch('/api/admin/bots', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    title: document.getElementById('botTitle').value,
+                    category: document.getElementById('botCategory').value,
+                    description: document.getElementById('botDesc').value,
+                    link: document.getElementById('botLink').value
+                })
+            });
+            loadData();
+        }
+
+        loadData();
     </script>
 </body>
 </html>
