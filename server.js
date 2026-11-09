@@ -61,7 +61,6 @@ const isAuth = (req, res, next) => {
 
 app.get('/ping', (req, res) => res.status(200).send('Alive'));
 
-// Проверка статуса админа для фронтенда
 app.get('/api/check-auth', (req, res) => {
     res.json({ isAdmin: !!req.session.isAdmin });
 });
@@ -159,7 +158,14 @@ app.post('/api/logout', (req, res) => {
     req.session.destroy(() => res.json({ success: true }));
 });
 
-// Авторизация MTProto по номеру
+// Админские ручки
+app.post('/api/admin/promocodes', isAuth, (req, res) => {
+    const { code, days, uses } = req.body;
+    db.run(`INSERT INTO promocodes (code, days, uses_left) VALUES (?, ?, ?)`, [code, days, uses], () => {
+        res.json({ success: true });
+    });
+});
+
 app.post('/api/admin/auth/send-code', isAuth, async (req, res) => {
     const { phone } = req.body;
     if (!phone) return res.status(400).json({ success: false, message: 'Введите номер телефона' });
